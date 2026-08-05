@@ -24,6 +24,8 @@ export default function ProfilePage() {
   const [newCode, setNewCode] = useState<string | null>(null)
   const [myBooks, setMyBooks] = useState<Book[]>([])
   const [pagesRead, setPagesRead] = useState<number | null>(null)
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const userId = session?.user.id
 
@@ -107,6 +109,19 @@ export default function ProfilePage() {
 
   async function handleSignOut() {
     await signOut()
+    navigate('/')
+  }
+
+  async function handleDeleteAccount() {
+    setError(null)
+    setDeleting(true)
+    const { error: deleteError } = await supabase.rpc('delete_own_account')
+    if (deleteError) {
+      setError('Não foi possível excluir a conta. Tente novamente.')
+      setDeleting(false)
+      return
+    }
+    await supabase.auth.signOut()
     navigate('/')
   }
 
@@ -235,9 +250,48 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      <Button variant="outline" onClick={handleSignOut} className="self-start">
-        Sair da conta
-      </Button>
+      <div className="flex flex-wrap gap-3">
+        <Button variant="outline" onClick={handleSignOut}>
+          Sair da conta
+        </Button>
+        {!confirmingDelete && (
+          <Button variant="destructive" onClick={() => setConfirmingDelete(true)}>
+            Excluir conta
+          </Button>
+        )}
+      </div>
+
+      {confirmingDelete && (
+        <Card className="border-destructive/40">
+          <CardContent className="flex flex-col gap-4 pt-6">
+            <h3 className="text-lg font-semibold text-destructive">
+              Excluir sua conta para sempre?
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Isso apaga seu perfil, seu código de recuperação, seu progresso
+              de leitura e todos os livros que você compartilhou. Não tem como
+              desfazer.
+            </p>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <div className="flex gap-3">
+              <Button
+                variant="destructive"
+                onClick={handleDeleteAccount}
+                disabled={deleting}
+              >
+                {deleting ? 'Excluindo…' : 'Sim, excluir minha conta'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmingDelete(false)}
+                disabled={deleting}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }
