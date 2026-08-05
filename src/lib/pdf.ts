@@ -64,16 +64,24 @@ export function drawPage(
   }
 }
 
+export interface ExtractedParagraph {
+  text: string
+  /** Provável título/subtítulo: fonte nitidamente maior que o corpo do texto. */
+  heading: boolean
+}
+
 /**
  * Extrai o texto de uma página e reconstrói parágrafos a partir da posição
  * dos fragmentos: uma quebra vertical maior que a linha vira novo parágrafo;
  * uma linha terminada em hífen é emendada com a próxima (quebra de palavra).
- * Heurística, não perfeita — PDFs digitalizados (imagem) retornam [].
+ * Também estima quais parágrafos são títulos (fonte maior, texto curto, sem
+ * pontuação de fim de frase). Heurística, não perfeita — PDFs digitalizados
+ * (imagem, sem camada de texto) retornam [].
  */
 export async function extractPageText(
   pdf: PDFDocumentProxy,
   pageNumber: number,
-): Promise<string[]> {
+): Promise<ExtractedParagraph[]> {
   const page = await pdf.getPage(pageNumber)
   const content = await page.getTextContent()
 
@@ -119,32 +127,55 @@ export async function extractPageText(
       .trim(),
   )
 
-  // Reconstrói parágrafos a partir das linhas
-  const paragraphs: string[] = []
+  // Altura "de corpo de texto": mediana das linhas com conteúdo
+  const bodyHeight = (() => {
+    const heights = lines
+      .map((l, i) => (lineTexts[i] ? l.height : null))
+      .filter((h): h is number => h !== null)
+      .sort((a, b) => a - b)
+    return heights.length > 0 ? heights[Math.floor(heights.length / 2)] : 10
+  })()
+
+  // Reconstrói parágrafos a partir das linhas, guardando a maior altura de
+  // fonte de cada um (para decidir depois se é um título)
+  const paragraphs: { text: string; height: number }[] = []
   let current = ''
+  let currentHeight = 0
   let prevY: number | null = null
   let prevHeight = 0
   for (let i = 0; i < lines.length; i++) {
     const text = lineTexts[i]
     if (!text) continue
     const y = lines[i].y
+    const height = lines[i].height
     const gap = prevY === null ? 0 : prevY - y
     const isNewParagraph = prevY !== null && gap > prevHeight * 1.5
 
     if (current && /-$/.test(current) && /^[a-zà-öø-ÿ]/.test(text)) {
       current = current.replace(/-$/, '') + text
+      currentHeight = Math.max(currentHeight, height)
     } else if (!current || isNewParagraph) {
-      if (current) paragraphs.push(current.trim())
+      if (current) paragraphs.push({ text: current.trim(), height: currentHeight })
       current = text
+      currentHeight = height
     } else {
       current += ' ' + text
+      currentHeight = Math.max(currentHeight, height)
     }
     prevY = y
-    prevHeight = lines[i].height
+    prevHeight = height
   }
-  if (current) paragraphs.push(current.trim())
+  if (current) paragraphs.push({ text: current.trim(), height: currentHeight })
 
-  return paragraphs.filter((p) => p.length > 0)
+  return paragraphs
+    .filter((p) => p.text.length > 0)
+    .map((p) => ({
+      text: p.text,
+      heading:
+        p.height > bodyHeight * 1.15 &&
+        p.text.length < 100 &&
+        !/[.,;:]$/.test(p.text),
+    }))
 }
 
 /** Renderiza a primeira página como JPEG — usada como capa padrão do livro. */

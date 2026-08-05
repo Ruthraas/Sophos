@@ -128,7 +128,7 @@ export default function ReaderPage() {
         let hasText = false
         for (const n of candidates) {
           const sample = await extractPageText(opened.pdf, n)
-          if (sample.join('').trim().length > 30) {
+          if (sample.map((p) => p.text).join('').trim().length > 30) {
             hasText = true
             break
           }
@@ -195,14 +195,14 @@ export default function ReaderPage() {
   const total = pdf?.numPages ?? 0
 
   const goPrev = useCallback(() => {
-    if (mode === 'text') textReaderRef.current?.goToPage(pageNum - 1)
+    if (mode === 'text') textReaderRef.current?.goPrev()
     else setPageNum((p) => Math.max(1, p - 1))
-  }, [mode, pageNum])
+  }, [mode])
 
   const goNext = useCallback(() => {
-    if (mode === 'text') textReaderRef.current?.goToPage(pageNum + 1)
+    if (mode === 'text') textReaderRef.current?.goNext()
     else setPageNum((p) => (total > 0 ? Math.min(total, p + 1) : p))
-  }, [mode, pageNum, total])
+  }, [mode, total])
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -219,9 +219,11 @@ export default function ReaderPage() {
     localStorage.setItem(READER_MODE_KEY, next)
   }
 
-  // Zonas de toque no modo PDF: terço esquerdo volta, direito avança, centro alterna a UI
+  // Zonas de toque: terço esquerdo volta, direito avança, centro alterna a UI.
+  // Ignora se houver seleção de texto em andamento (não atrapalha a cópia de trechos).
   function handleZoneClick(e: MouseEvent<HTMLDivElement>) {
     if (!pdf) return
+    if (window.getSelection && window.getSelection()?.toString()) return
     const rect = e.currentTarget.getBoundingClientRect()
     const x = (e.clientX - rect.left) / rect.width
     if (x < 0.3) goPrev()
@@ -241,19 +243,18 @@ export default function ReaderPage() {
     )
   }
 
-  // No modo texto a leitura é contínua — os controles ficam sempre visíveis.
-  const barsVisible = mode === 'text' ? true : uiVisible
+  const barsVisible = uiVisible
   const ready = pdf && pageNum > 0 && modeReady
 
   return (
     <div
       className={cn(
         'fixed inset-0 overflow-hidden bg-[var(--reader-bg)]',
-        mode === 'pdf' && !uiVisible && 'cursor-none',
+        !uiVisible && 'cursor-none',
       )}
       onMouseMove={() => {
         // toques geram eventos de mouse sintéticos — ignorá-los aqui
-        if (mode === 'pdf' && Date.now() - lastTouch.current > 600) showUi()
+        if (Date.now() - lastTouch.current > 600) showUi()
       }}
     >
       <div
@@ -309,14 +310,16 @@ export default function ReaderPage() {
           <p className="text-sm text-muted-foreground">Preparando o livro…</p>
         </div>
       ) : mode === 'text' ? (
-        <TextReader
-          ref={textReaderRef}
-          pdf={pdf}
-          totalPages={total}
-          startPage={pageNum}
-          fontScale={zoom}
-          onPageChange={setPageNum}
-        />
+        <div className="relative h-full" onClick={handleZoneClick}>
+          <TextReader
+            ref={textReaderRef}
+            pdf={pdf}
+            totalPages={total}
+            startPage={pageNum}
+            fontScale={zoom}
+            onPageChange={setPageNum}
+          />
+        </div>
       ) : (
         <div
           className="flex h-full items-start justify-center overflow-auto px-4 pb-16 pt-12"

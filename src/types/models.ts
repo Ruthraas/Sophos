@@ -64,3 +64,31 @@ export interface ReadingProgress {
   current_page: number
   last_read_at: string
 }
+
+/** public.follows — chave composta (follower_id, followee_id) */
+export interface Follow {
+  follower_id: string
+  followee_id: string
+  created_at: string
+}
+
+/** public.book_likes — chave composta (user_id, book_id) */
+export interface BookLike {
+  user_id: string
+  book_id: string
+  created_at: string
+}
+
+/** public.book_comments */
+export interface BookComment {
+  id: string
+  book_id: string
+  user_id: string
+  body: string
+  created_at: string
+}
+
+/** Comentário com o perfil de quem escreveu (join usado na página do livro). */
+export interface BookCommentWithAuthor extends BookComment {
+  profiles: Pick<Profile, 'username' | 'display_name' | 'avatar_url'> | null
+}

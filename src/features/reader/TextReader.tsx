@@ -6,9 +6,11 @@ import {
   useState,
 } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
+import type { ExtractedParagraph } from '../../lib/pdf'
 
 export interface TextReaderHandle {
-  goToPage: (page: number) => void
+  goNext: () => void
+  goPrev: () => void
 }
 
 interface TextReaderProps {
@@ -19,20 +21,21 @@ interface TextReaderProps {
   onPageChange: (page: number) => void
 }
 
-const WINDOW_BEFORE = 2
-const WINDOW_AFTER = 2
-const BATCH = 3
+const WINDOW_BEFORE = 3
+const WINDOW_AFTER = 3
+const BATCH = 4
 
 const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
   function TextReader({ pdf, totalPages, startPage, fontScale, onPageChange }, ref) {
-    const [pages, setPages] = useState<Map<number, string[]>>(new Map())
+    const [pages, setPages] = useState<Map<number, ExtractedParagraph[]>>(new Map())
     const [minLoaded, setMinLoaded] = useState(startPage)
     const [maxLoaded, setMaxLoaded] = useState(startPage)
     const [loadingMore, setLoadingMore] = useState(false)
     const [loadingPrev, setLoadingPrev] = useState(false)
+    const [activePage, setActivePage] = useState(startPage)
 
     const containerRef = useRef<HTMLDivElement | null>(null)
-    const bottomSentinelRef = useRef<HTMLDivElement | null>(null)
+    const rightSentinelRef = useRef<HTMLDivElement | null>(null)
     const pageRefs = useRef(new Map<number, HTMLDivElement>())
     const initializedFor = useRef<PDFDocumentProxy | null>(null)
     const scrolledInitial = useRef(false)
@@ -63,17 +66,29 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pdf])
 
-    // Assim que a página inicial estiver no DOM, rola até ela
+    // Só contam como "página" de verdade as que têm texto — imagens/capas
+    // digitalizadas não aparecem na leitura em texto.
+    const orderedPages = Array.from(pages.entries())
+      .filter(([, paragraphs]) => paragraphs.length > 0)
+      .map(([n]) => n)
+      .sort((a, b) => a - b)
+
+    // Assim que a janela inicial carregar, rola até a primeira página com
+    // texto a partir do ponto de retomada (ele mesmo pode ser só a capa).
     useEffect(() => {
-      if (scrolledInitial.current) return
-      const el = pageRefs.current.get(startPage)
+      if (scrolledInitial.current || orderedPages.length === 0) return
+      const target = orderedPages.find((p) => p >= startPage) ?? orderedPages[0]
+      const el = pageRefs.current.get(target)
       if (el) {
-        el.scrollIntoView({ block: 'start' })
+        el.scrollIntoView({ block: 'nearest', inline: 'start' })
+        setActivePage(target)
+        onPageChange(target)
         scrolledInitial.current = true
       }
-    }, [pages, startPage])
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [orderedPages.join(',')])
 
-    // Observa qual página está mais visível para reportar o progresso
+    // Observa qual página está mais visível horizontalmente
     useEffect(() => {
       const container = containerRef.current
       if (!container) return
@@ -84,19 +99,22 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
             .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0]
           if (visible) {
             const page = Number((visible.target as HTMLElement).dataset.page)
-            if (page) onPageChange(page)
+            if (page) {
+              setActivePage(page)
+              onPageChange(page)
+            }
           }
         },
-        { root: container, threshold: [0.5] },
+        { root: container, threshold: [0.6] },
       )
       for (const el of pageRefs.current.values()) observer.observe(el)
       return () => observer.disconnect()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pages])
 
-    // Carrega mais páginas ao chegar perto do fim (scroll infinito)
+    // Carrega mais páginas ao chegar perto do fim (a "borda" vai crescendo)
     useEffect(() => {
-      const sentinel = bottomSentinelRef.current
+      const sentinel = rightSentinelRef.current
       const container = containerRef.current
       if (!sentinel || !container || maxLoaded >= totalPages) return
       const observer = new IntersectionObserver(
@@ -111,111 +129,114 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
             })
           }
         },
-        { root: container, rootMargin: '600px' },
+        { root: container, rootMargin: '0px 800px 0px 0px' },
       )
       observer.observe(sentinel)
       return () => observer.disconnect()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [maxLoaded, totalPages, loadingMore])
 
-    // Carrega páginas anteriores preservando a posição visual de rolagem
     function handleLoadPrevious() {
-      const container = containerRef.current
-      if (!container || minLoaded <= 1 || loadingPrev) return
+      if (minLoaded <= 1 || loadingPrev) return
       setLoadingPrev(true)
       const from = Math.max(1, minLoaded - BATCH)
       const to = minLoaded - 1
-      const prevScrollHeight = container.scrollHeight
-      const prevScrollTop = container.scrollTop
       void loadRange(from, to).then(() => {
         setMinLoaded(from)
         setLoadingPrev(false)
-        requestAnimationFrame(() => {
-          container.scrollTop =
-            prevScrollTop + (container.scrollHeight - prevScrollHeight)
-        })
+      })
+    }
+
+    function scrollToPage(page: number) {
+      pageRefs.current.get(page)?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'start',
       })
     }
 
     useImperativeHandle(ref, () => ({
-      goToPage(page: number) {
-        const clamped = Math.max(1, Math.min(totalPages, page))
-        const existing = pageRefs.current.get(clamped)
-        if (existing) {
-          existing.scrollIntoView({ behavior: 'smooth', block: 'start' })
-          return
-        }
-        const from = Math.max(1, clamped - WINDOW_BEFORE)
-        const to = Math.min(totalPages, clamped + WINDOW_AFTER)
-        void loadRange(from, to).then(() => {
-          setMinLoaded((m) => Math.min(m, from))
-          setMaxLoaded((m) => Math.max(m, to))
-          requestAnimationFrame(() => {
-            pageRefs.current.get(clamped)?.scrollIntoView({ block: 'start' })
+      goNext() {
+        const idx = orderedPages.indexOf(activePage)
+        if (idx >= 0 && idx < orderedPages.length - 1) {
+          scrollToPage(orderedPages[idx + 1])
+        } else if (maxLoaded < totalPages && !loadingMore) {
+          setLoadingMore(true)
+          const from = maxLoaded + 1
+          const to = Math.min(totalPages, maxLoaded + BATCH)
+          void loadRange(from, to).then(() => {
+            setMaxLoaded(to)
+            setLoadingMore(false)
           })
-        })
+        }
+      },
+      goPrev() {
+        const idx = orderedPages.indexOf(activePage)
+        if (idx > 0) {
+          scrollToPage(orderedPages[idx - 1])
+        }
       },
     }))
-
-    const orderedPages = Array.from(pages.keys()).sort((a, b) => a - b)
 
     return (
       <div
         ref={containerRef}
-        className="h-full overflow-y-auto overscroll-contain bg-[var(--reader-bg)] px-4 pb-24 pt-16 md:px-8"
+        className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-contain scroll-smooth"
       >
-        <div
-          className="mx-auto flex max-w-[42rem] flex-col gap-8 text-foreground/90"
-          style={{ fontSize: `${1.15 * fontScale}rem`, lineHeight: 1.85 }}
-        >
-          {minLoaded > 1 && (
+        {minLoaded > 1 && (
+          <div className="flex h-full w-full shrink-0 snap-start items-center justify-center">
             <button
               onClick={handleLoadPrevious}
               disabled={loadingPrev}
-              className="mx-auto rounded-full border px-4 py-1.5 text-sm text-muted-foreground hover:text-foreground"
+              className="rounded-full border px-5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
             >
-              {loadingPrev ? 'Carregando…' : '↑ Carregar páginas anteriores'}
+              {loadingPrev ? 'Carregando…' : '← Carregar páginas anteriores'}
             </button>
-          )}
+          </div>
+        )}
 
-          {orderedPages.map((pageNumber) => {
-            const paragraphs = pages.get(pageNumber) ?? []
-            return (
+        {orderedPages.map((pageNumber) => {
+          const paragraphs = pages.get(pageNumber) ?? []
+          const isActive = pageNumber === activePage
+          return (
+            <div
+              key={pageNumber}
+              data-page={pageNumber}
+              ref={(el) => {
+                if (el) pageRefs.current.set(pageNumber, el)
+                else pageRefs.current.delete(pageNumber)
+              }}
+              className="h-full w-full shrink-0 snap-start overflow-y-auto px-6 pb-20 pt-6 transition-opacity duration-500 md:px-16"
+              style={{ opacity: isActive ? 1 : 0.55 }}
+            >
               <div
-                key={pageNumber}
-                data-page={pageNumber}
-                ref={(el) => {
-                  if (el) pageRefs.current.set(pageNumber, el)
-                  else pageRefs.current.delete(pageNumber)
-                }}
-                className="flex flex-col gap-5"
+                className="mx-auto flex min-h-full max-w-[38rem] flex-col justify-center gap-5 py-10 text-foreground/90"
+                style={{ fontSize: `${1.1 * fontScale}rem`, lineHeight: 1.85 }}
               >
-                {paragraphs.length === 0 ? (
-                  <p className="text-sm italic text-muted-foreground">
-                    (Esta página não tem texto reconhecível — pode ser uma
-                    imagem digitalizada.)
-                  </p>
-                ) : (
-                  paragraphs.map((paragraph, i) => (
-                    <p key={i} className="text-pretty">
-                      {paragraph}
+                {paragraphs.map((p, i) =>
+                  p.heading ? (
+                    <p key={i} className="text-[1.2em] font-semibold text-foreground">
+                      {p.text}
                     </p>
-                  ))
+                  ) : (
+                    <p key={i} className="text-pretty">
+                      {p.text}
+                    </p>
+                  ),
                 )}
-                <span className="self-center font-sans text-xs tracking-wide text-muted-foreground/60">
-                  — {pageNumber} —
-                </span>
               </div>
-            )
-          })}
+            </div>
+          )
+        })}
 
-          <div ref={bottomSentinelRef} className="h-1" />
-          {loadingMore && (
-            <p className="text-center font-sans text-sm text-muted-foreground">
+        <div ref={rightSentinelRef} className="h-full w-px shrink-0" />
+        {loadingMore && (
+          <div className="flex h-full w-full shrink-0 snap-start items-center justify-center">
+            <p className="text-sm text-muted-foreground">
               Carregando mais páginas…
             </p>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     )
   },

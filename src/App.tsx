@@ -1,5 +1,5 @@
 import { BrowserRouter, Link, NavLink, Outlet, Route, Routes } from 'react-router'
-import { Home, LogIn, Upload, User } from 'lucide-react'
+import { Compass, Home, LogIn, Upload, User } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AuthProvider, useAuth } from './features/auth/AuthContext'
@@ -10,6 +10,7 @@ import PublicProfilePage from './features/profile/PublicProfilePage'
 import CatalogPage from './features/catalog/CatalogPage'
 import BookPage from './features/catalog/BookPage'
 import UploadPage from './features/upload/UploadPage'
+import DiscoverPage from './features/discover/DiscoverPage'
 import ReaderPage from './features/reader/ReaderPage'
 import RequireAuth from './components/RequireAuth'
 
@@ -61,11 +62,13 @@ function useNavItems(): NavItemProps[] {
   return session
     ? [
         { to: '/', icon: Home, label: 'Início', end: true },
+        { to: '/descobrir', icon: Compass, label: 'Descobrir' },
         { to: '/enviar', icon: Upload, label: 'Compartilhar' },
         { to: '/perfil', icon: User, label: profile?.display_name ?? 'Perfil' },
       ]
     : [
         { to: '/', icon: Home, label: 'Início', end: true },
+        { to: '/descobrir', icon: Compass, label: 'Descobrir' },
         { to: '/entrar', icon: LogIn, label: 'Entrar' },
       ]
 }
@@ -136,6 +139,7 @@ export default function App() {
             <Route path="/entrar" element={<AuthPage />} />
             <Route path="/recuperar" element={<ResetPasswordPage />} />
             <Route path="/livro/:id" element={<BookPage />} />
+            <Route path="/descobrir" element={<DiscoverPage />} />
             <Route path="/u/:username" element={<PublicProfilePage />} />
             <Route
               path="/enviar"

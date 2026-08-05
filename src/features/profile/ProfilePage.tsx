@@ -6,12 +6,19 @@ import { useAuth } from '../auth/AuthContext'
 import { signOut } from '../auth/auth-service'
 import { hasRecoveryCode, saveNewRecoveryCode } from '../auth/recovery'
 import { fetchBookDescription } from '../../lib/bookLookup'
+import {
+  fetchCompletedBooks,
+  fetchFollowCounts,
+  type CompletedBook,
+  type FollowCounts,
+} from '../../lib/social'
 import type { Book } from '../../types/models'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import AchievementBadges from '@/components/AchievementBadges'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -29,6 +36,8 @@ export default function ProfilePage() {
   const [deleting, setDeleting] = useState(false)
   const [backfilling, setBackfilling] = useState(false)
   const [backfillResult, setBackfillResult] = useState<string | null>(null)
+  const [completed, setCompleted] = useState<CompletedBook[]>([])
+  const [counts, setCounts] = useState<FollowCounts>({ followers: 0, following: 0 })
 
   const userId = session?.user.id
   const booksWithoutDescription = myBooks.filter((b) => !b.description.trim())
@@ -58,6 +67,8 @@ export default function ProfilePage() {
             setPagesRead(data.reduce((sum, r) => sum + r.current_page, 0))
           }
         })
+      void fetchCompletedBooks(userId).then(setCompleted)
+      void fetchFollowCounts(userId).then(setCounts)
     }
   }, [userId])
 
@@ -174,18 +185,36 @@ export default function ProfilePage() {
             ) : (
               <div className="size-18 rounded-full border-2 border-primary/50 bg-secondary" />
             )}
-            <Label className="cursor-pointer">
-              <span className="inline-flex h-9 items-center rounded-md border px-4 text-sm hover:bg-accent">
-                Trocar avatar
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleAvatar}
-                className="hidden"
-              />
-            </Label>
+            <div className="flex flex-col gap-2">
+              <Label className="cursor-pointer">
+                <span className="inline-flex h-9 items-center rounded-md border px-4 text-sm hover:bg-accent">
+                  Trocar avatar
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleAvatar}
+                  className="hidden"
+                />
+              </Label>
+              {profile && (
+                <p className="text-sm text-muted-foreground">
+                  <Link
+                    to={`/u/${profile.username}`}
+                    className="text-primary hover:underline"
+                  >
+                    Ver perfil público
+                  </Link>{' '}
+                  · <strong className="text-foreground">{counts.followers}</strong>{' '}
+                  seguidores ·{' '}
+                  <strong className="text-foreground">{counts.following}</strong>{' '}
+                  seguindo
+                </p>
+              )}
+            </div>
           </div>
+
+          <AchievementBadges completed={completed} />
 
           <form className="flex flex-col gap-5" onSubmit={handleSave}>
             <div className="flex flex-col gap-2">

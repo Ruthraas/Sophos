@@ -1,13 +1,18 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { supabase } from '../../lib/supabase'
+import { fetchCompletedBooks, fetchFollowCounts, type CompletedBook, type FollowCounts } from '../../lib/social'
 import type { BookWithUploader, Profile } from '../../types/models'
 import BookCard from '../catalog/BookCard'
+import FollowButton from './FollowButton'
+import AchievementBadges from '@/components/AchievementBadges'
 
 export default function PublicProfilePage() {
   const { username } = useParams<{ username: string }>()
   const [profile, setProfile] = useState<Profile | null | 'not-found'>(null)
   const [books, setBooks] = useState<BookWithUploader[]>([])
+  const [completed, setCompleted] = useState<CompletedBook[]>([])
+  const [counts, setCounts] = useState<FollowCounts>({ followers: 0, following: 0 })
 
   useEffect(() => {
     if (!username) return
@@ -30,6 +35,14 @@ export default function PublicProfilePage() {
         .eq('uploaded_by', p.id)
         .order('created_at', { ascending: false })
       if (active && b) setBooks(b)
+      const [completedBooks, followCounts] = await Promise.all([
+        fetchCompletedBooks(p.id),
+        fetchFollowCounts(p.id),
+      ])
+      if (active) {
+        setCompleted(completedBooks)
+        setCounts(followCounts)
+      }
     }
     void load()
     return () => {
@@ -58,7 +71,7 @@ export default function PublicProfilePage() {
 
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 md:px-10">
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center gap-4">
         {profile.avatar_url ? (
           <img
             src={profile.avatar_url}
@@ -68,13 +81,21 @@ export default function PublicProfilePage() {
         ) : (
           <div className="size-18 rounded-full border-2 border-primary/50 bg-secondary" />
         )}
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-semibold">{profile.display_name}</h1>
           <p className="text-sm text-muted-foreground">@{profile.username}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            <strong className="text-foreground">{counts.followers}</strong>{' '}
+            seguidores · <strong className="text-foreground">{counts.following}</strong>{' '}
+            seguindo
+          </p>
         </div>
+        <FollowButton profileId={profile.id} />
       </div>
 
       {profile.bio && <p className="max-w-2xl text-sm">{profile.bio}</p>}
+
+      <AchievementBadges completed={completed} />
 
       <div className="flex flex-col gap-4">
         <h3 className="text-lg font-semibold">
