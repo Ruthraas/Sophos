@@ -20,8 +20,8 @@ export default defineConfig({
           'Comunidade de leitura: compartilhe livros e leia direto no navegador.',
         lang: 'pt-BR',
         display: 'standalone',
-        background_color: '#15181e',
-        theme_color: '#15181e',
+        background_color: '#171310',
+        theme_color: '#171310',
         icons: [
           { src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },

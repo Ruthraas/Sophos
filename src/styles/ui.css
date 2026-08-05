@@ -16,10 +16,24 @@
   padding: var(--space-6);
 }
 
+/* Friso de meandro (a "grega") que separa o cabeçalho do conteúdo */
+.meander {
+  height: 12px;
+  background-image: var(--meander);
+  background-repeat: repeat-x;
+  background-position: center;
+  border-top: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+  opacity: 0.9;
+}
+
 .brand {
-  font-family: var(--font-heading);
+  font-family: var(--font-display);
+  font-weight: 650;
   font-size: var(--text-xl);
+  letter-spacing: 0.05em;
   color: var(--color-heading);
+  transition: color var(--transition-fast);
 }
 
 .brand:hover {
@@ -29,8 +43,10 @@
 .card {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
+  border-top-color: color-mix(in srgb, var(--color-accent) 22%, var(--color-border));
   border-radius: var(--radius-lg);
   padding: var(--space-8);
+  box-shadow: var(--shadow-soft);
 }
 
 .stack {
@@ -45,6 +61,8 @@
 
 .label {
   font-size: var(--text-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
@@ -54,12 +72,13 @@
   border-radius: var(--radius-sm);
   padding: var(--space-3) var(--space-4);
   width: 100%;
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
 .input:focus {
   outline: none;
   border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 18%, transparent);
 }
 
 .btn {
@@ -69,11 +88,18 @@
   background: var(--color-surface-raised);
   padding: var(--space-3) var(--space-6);
   cursor: pointer;
-  transition: background var(--transition-fast), border-color var(--transition-fast);
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .btn:hover {
-  border-color: var(--color-accent);
+  border-color: var(--color-border-gold);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 
 .btn:disabled {
@@ -82,14 +108,17 @@
 }
 
 .btn-primary {
-  background: var(--color-accent);
+  background: linear-gradient(180deg, var(--color-accent-hover), var(--color-accent));
   border-color: var(--color-accent);
   color: var(--color-accent-contrast);
-  font-weight: 550;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 2px 8px rgb(201 163 95 / 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--color-accent-hover);
+  border-color: var(--color-accent-hover);
 }
 
 .btn-link {
@@ -115,10 +144,12 @@
 }
 
 .notice {
-  border: 1px solid var(--color-secondary);
+  border: 1px solid color-mix(in srgb, var(--color-secondary) 55%, transparent);
+  border-left: 3px solid var(--color-secondary);
   border-radius: var(--radius-md);
   padding: var(--space-4);
   font-size: var(--text-sm);
+  background: color-mix(in srgb, var(--color-secondary) 6%, transparent);
 }
 
 .code-box {
@@ -170,11 +201,17 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
   background: var(--color-surface-raised);
-  transition: border-color var(--transition-fast);
+  box-shadow: var(--shadow-soft);
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-smooth),
+    box-shadow var(--transition-smooth);
 }
 
 a:hover > .book-cover {
   border-color: var(--color-accent);
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lifted);
 }
 
 .book-title {
@@ -190,10 +227,12 @@ a:hover > .book-cover {
 .tag {
   display: inline-block;
   font-size: var(--text-xs);
+  letter-spacing: 0.03em;
   color: var(--color-secondary);
-  border: 1px solid var(--color-border);
+  border: 1px solid color-mix(in srgb, var(--color-secondary) 45%, transparent);
   border-radius: 999px;
   padding: 1px var(--space-2);
+  background: color-mix(in srgb, var(--color-secondary) 8%, transparent);
 }
 
 .continue-row {
@@ -210,11 +249,14 @@ a:hover > .book-cover {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  transition: border-color var(--transition-fast);
+  transition:
+    border-color var(--transition-fast),
+    transform var(--transition-fast);
 }
 
 .continue-card:hover {
   border-color: var(--color-accent);
+  transform: translateY(-2px);
 }
 
 .continue-cover {
@@ -238,7 +280,7 @@ a:hover > .book-cover {
 .progress-fill {
   height: 100%;
   border-radius: 999px;
-  background: var(--color-accent);
+  background: linear-gradient(90deg, var(--color-secondary), var(--color-accent));
 }
 
 .book-hero {
@@ -253,5 +295,6 @@ a:hover > .book-cover {
   border-radius: 50%;
   object-fit: cover;
   background: var(--color-surface-raised);
-  border: 1px solid var(--color-border);
+  border: 2px solid var(--color-border-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 12%, transparent);
 }

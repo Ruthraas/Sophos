@@ -36,6 +36,7 @@ function SiteLayout() {
   return (
     <>
       <Header />
+      <div className="meander" aria-hidden />
       <Outlet />
     </>
   )
