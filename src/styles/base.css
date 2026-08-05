@@ -33,11 +33,19 @@ h3 {
   font-family: var(--font-heading);
   line-height: var(--leading-heading);
   font-weight: 550;
-  /* letras gravadas em ouro */
+}
+
+/* Letras gravadas em ouro — só nos dois níveis principais */
+h1,
+h2 {
   background: var(--gradient-gold);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
+}
+
+h3 {
+  color: var(--color-heading);
 }
 
 h1 {
