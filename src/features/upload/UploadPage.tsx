@@ -1,9 +1,13 @@
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
-import { fetchBookDescription } from '../../lib/bookLookup'
+import {
+  fetchBookDescription,
+  findDuplicateBook,
+  type DuplicateBook,
+} from '../../lib/bookLookup'
 import { BOOK_CATEGORIES, BOOK_LANGUAGES } from '../../types/models'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,6 +36,8 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null)
   const [descLoading, setDescLoading] = useState(false)
   const [descAuto, setDescAuto] = useState(false)
+  const [duplicate, setDuplicate] = useState<DuplicateBook | null>(null)
+  const [checkingDuplicate, setCheckingDuplicate] = useState(false)
 
   async function handleFetchDescription() {
     if (!title.trim() || !author.trim()) return
@@ -45,6 +51,17 @@ export default function UploadPage() {
     } finally {
       setDescLoading(false)
     }
+  }
+
+  async function handleCheckDuplicate() {
+    if (!title.trim() || !author.trim()) {
+      setDuplicate(null)
+      return
+    }
+    setCheckingDuplicate(true)
+    const match = await findDuplicateBook(title.trim(), author.trim())
+    setCheckingDuplicate(false)
+    setDuplicate(match)
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -143,7 +160,11 @@ export default function UploadPage() {
               <Input
                 id="title"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                  setTitle(e.target.value)
+                  setDuplicate(null)
+                }}
+                onBlur={handleCheckDuplicate}
                 maxLength={120}
                 required
               />
@@ -154,14 +175,44 @@ export default function UploadPage() {
               <Input
                 id="author"
                 value={author}
-                onChange={(e) => setAuthor(e.target.value)}
+                onChange={(e) => {
+                  setAuthor(e.target.value)
+                  setDuplicate(null)
+                }}
                 onBlur={() => {
                   if (!description.trim()) void handleFetchDescription()
+                  void handleCheckDuplicate()
                 }}
                 maxLength={80}
                 required
               />
             </div>
+
+            {checkingDuplicate && (
+              <p className="text-xs text-muted-foreground">
+                Verificando se este livro já está no catálogo…
+              </p>
+            )}
+            {duplicate && (
+              <div className="flex flex-col gap-1 rounded-md border-l-2 border-primary bg-primary/10 p-3 text-sm">
+                <p>
+                  Um livro parecido já está no catálogo:{' '}
+                  <Link
+                    to={`/livro/${duplicate.id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-medium text-primary hover:underline"
+                  >
+                    {duplicate.title}
+                  </Link>{' '}
+                  — {duplicate.author}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Pode ser a mesma obra. Se for uma edição diferente, pode
+                  enviar mesmo assim.
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between gap-2">

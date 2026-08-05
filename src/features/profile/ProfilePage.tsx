@@ -1,10 +1,11 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { BookMarked } from 'lucide-react'
+import { BookMarked, Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { signOut } from '../auth/auth-service'
 import { hasRecoveryCode, saveNewRecoveryCode } from '../auth/recovery'
+import { fetchBookDescription } from '../../lib/bookLookup'
 import type { Book } from '../../types/models'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -26,8 +27,11 @@ export default function ProfilePage() {
   const [pagesRead, setPagesRead] = useState<number | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [backfilling, setBackfilling] = useState(false)
+  const [backfillResult, setBackfillResult] = useState<string | null>(null)
 
   const userId = session?.user.id
+  const booksWithoutDescription = myBooks.filter((b) => !b.description.trim())
 
   useEffect(() => {
     if (profile) {
@@ -105,6 +109,35 @@ export default function ProfilePage() {
     } catch {
       setError('Não foi possível gerar o código.')
     }
+  }
+
+  async function handleBackfillDescriptions() {
+    if (!userId || booksWithoutDescription.length === 0) return
+    setBackfillResult(null)
+    setBackfilling(true)
+    let updated = 0
+    for (const book of booksWithoutDescription) {
+      const found = await fetchBookDescription(book.title, book.author)
+      if (found) {
+        const { error: updateError } = await supabase
+          .from('books')
+          .update({ description: found })
+          .eq('id', book.id)
+        if (!updateError) updated++
+      }
+    }
+    setBackfilling(false)
+    setBackfillResult(
+      updated > 0
+        ? `${updated} descrição${updated === 1 ? '' : 'ões'} preenchida${updated === 1 ? '' : 's'} automaticamente.`
+        : 'Não encontramos sinopses para esses livros — tente preencher manualmente.',
+    )
+    const { data } = await supabase
+      .from('books')
+      .select('*')
+      .eq('uploaded_by', userId)
+      .order('created_at', { ascending: false })
+    setMyBooks(data ?? [])
   }
 
   async function handleSignOut() {
@@ -235,17 +268,47 @@ export default function ProfilePage() {
               .
             </p>
           ) : (
-            <ul className="flex flex-col gap-2">
-              {myBooks.map((book) => (
-                <li key={book.id} className="flex items-center gap-2 text-sm">
-                  <BookMarked className="size-4 shrink-0 text-primary/70" />
-                  <Link to={`/livro/${book.id}`} className="hover:underline">
-                    {book.title}
-                  </Link>
-                  <span className="text-muted-foreground">— {book.author}</span>
-                </li>
-              ))}
-            </ul>
+            <>
+              {booksWithoutDescription.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-dashed p-3 text-sm">
+                  <span className="text-muted-foreground">
+                    {booksWithoutDescription.length} livro
+                    {booksWithoutDescription.length === 1 ? '' : 's'} sem
+                    descrição.
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5"
+                    onClick={handleBackfillDescriptions}
+                    disabled={backfilling}
+                  >
+                    <Sparkles className="size-3.5" />
+                    {backfilling ? 'Buscando…' : 'Preencher automaticamente'}
+                  </Button>
+                </div>
+              )}
+              {backfillResult && (
+                <p className="text-xs text-muted-foreground">{backfillResult}</p>
+              )}
+              <ul className="flex flex-col gap-2">
+                {myBooks.map((book) => (
+                  <li key={book.id} className="flex items-center gap-2 text-sm">
+                    <BookMarked className="size-4 shrink-0 text-primary/70" />
+                    <Link to={`/livro/${book.id}`} className="hover:underline">
+                      {book.title}
+                    </Link>
+                    <span className="text-muted-foreground">— {book.author}</span>
+                    {!book.description.trim() && (
+                      <span className="text-xs text-muted-foreground/70">
+                        (sem descrição)
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </CardContent>
       </Card>
