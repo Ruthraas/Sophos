@@ -1,7 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
+import { Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
+import { fetchBookDescription } from '../../lib/bookLookup'
 import { BOOK_CATEGORIES, BOOK_LANGUAGES } from '../../types/models'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -28,6 +30,22 @@ export default function UploadPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [descLoading, setDescLoading] = useState(false)
+  const [descAuto, setDescAuto] = useState(false)
+
+  async function handleFetchDescription() {
+    if (!title.trim() || !author.trim()) return
+    setDescLoading(true)
+    try {
+      const found = await fetchBookDescription(title.trim(), author.trim())
+      if (found) {
+        setDescription(found)
+        setDescAuto(true)
+      }
+    } finally {
+      setDescLoading(false)
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -137,20 +155,50 @@ export default function UploadPage() {
                 id="author"
                 value={author}
                 onChange={(e) => setAuthor(e.target.value)}
+                onBlur={() => {
+                  if (!description.trim()) void handleFetchDescription()
+                }}
                 maxLength={80}
                 required
               />
             </div>
 
             <div className="flex flex-col gap-2">
-              <Label htmlFor="description">Descrição curta</Label>
+              <div className="flex items-center justify-between gap-2">
+                <Label htmlFor="description">Descrição curta</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto gap-1.5 px-2 py-1 text-xs text-primary hover:text-primary"
+                  onClick={handleFetchDescription}
+                  disabled={descLoading || !title.trim() || !author.trim()}
+                >
+                  <Sparkles className="size-3.5" />
+                  {descLoading
+                    ? 'Buscando…'
+                    : description
+                      ? 'Buscar novamente'
+                      : 'Buscar automaticamente'}
+                </Button>
+              </div>
               <Textarea
                 id="description"
                 rows={3}
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                  setDescription(e.target.value)
+                  setDescAuto(false)
+                }}
                 maxLength={500}
+                placeholder="Preencha título e autor para buscar a sinopse automaticamente, ou escreva a sua."
               />
+              {descAuto && (
+                <p className="text-xs text-muted-foreground">
+                  Sinopse encontrada automaticamente — sinta-se à vontade para
+                  editar.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
