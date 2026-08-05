@@ -71,13 +71,7 @@
 /* Degradê dourado em texto, como letras gravadas em ouro */
 .brand,
 .text-gold {
-  background: linear-gradient(
-    170deg,
-    #f6d98a 10%,
-    var(--color-accent) 45%,
-    #a87d3a 75%,
-    var(--color-accent-hover) 100%
-  );
+  background: var(--gradient-gold);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
