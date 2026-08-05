@@ -1,0 +1,103 @@
+@import 'tailwindcss';
+
+/*
+ * Tema do Fórum de Sophos — escuro, minimalista, com dourado
+ * como único acento (herança da fase "cerâmica grega").
+ * Tokens no formato shadcn/ui.
+ */
+:root {
+  --background: #131110;
+  --foreground: #e9e2d5;
+  --card: #1b1815;
+  --card-foreground: #e9e2d5;
+  --popover: #1b1815;
+  --popover-foreground: #e9e2d5;
+  --primary: #ddad55;
+  --primary-foreground: #201a0e;
+  --secondary: #262019;
+  --secondary-foreground: #e9e2d5;
+  --muted: #241f1a;
+  --muted-foreground: #a3988a;
+  --accent: #2a241d;
+  --accent-foreground: #e9e2d5;
+  --destructive: #d98a7a;
+  --destructive-foreground: #201a0e;
+  --border: #2c261f;
+  --input: #2c261f;
+  --ring: #ddad55;
+  --radius: 0.75rem;
+
+  /* Leitor imersivo */
+  --reader-bg: #100e0d;
+  --reader-page: #1c1814;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Cinzel Variable', Georgia, serif;
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    background: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    min-height: 100dvh;
+  }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+}
+
+@layer utilities {
+  /* Fileiras horizontais sem barra de rolagem visível */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Marca em ouro */
+  .wordmark {
+    font-family: var(--font-display);
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    color: var(--color-primary);
+  }
+}

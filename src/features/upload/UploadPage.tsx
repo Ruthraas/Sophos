@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { BOOK_CATEGORIES, BOOK_LANGUAGES } from '../../types/models'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 const MAX_PDF_MB = 25
 const COVER_TYPES: Record<string, string> = {
@@ -103,115 +108,114 @@ export default function UploadPage() {
   const busy = status !== null
 
   return (
-    <div className="container">
-      <div className="card">
-        <form className="stack" onSubmit={handleSubmit}>
-          <h2>Compartilhar um livro</h2>
-          <p className="help">
-            O livro ficará disponível para toda a comunidade ler direto no
-            navegador, com seu nome nos créditos.
-          </p>
+    <div className="mx-auto max-w-2xl px-4 py-10 md:px-10">
+      <Card>
+        <CardContent className="pt-6">
+          <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+            <div>
+              <h2 className="text-xl font-semibold">Compartilhar um livro</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                O livro ficará disponível para toda a comunidade ler direto no
+                navegador, com seu nome nos créditos.
+              </p>
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="title">Título</label>
-            <input
-              id="title"
-              className="input"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              maxLength={120}
-              required
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="title">Título</Label>
+              <Input
+                id="title"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                maxLength={120}
+                required
+              />
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="author">Autor(a)</label>
-            <input
-              id="author"
-              className="input"
-              value={author}
-              onChange={(e) => setAuthor(e.target.value)}
-              maxLength={80}
-              required
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="author">Autor(a)</Label>
+              <Input
+                id="author"
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                maxLength={80}
+                required
+              />
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="description">Descrição curta</label>
-            <textarea
-              id="description"
-              className="input"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              maxLength={500}
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="description">Descrição curta</Label>
+              <Textarea
+                id="description"
+                rows={3}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                maxLength={500}
+              />
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="category">Categoria</label>
-            <select
-              id="category"
-              className="input"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              required
-            >
-              <option value="" disabled>Escolha…</option>
-              {BOOK_CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="category">Categoria</Label>
+                <select
+                  id="category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  required
+                  className="flex h-9 w-full rounded-md border bg-secondary/50 px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  <option value="" disabled>Escolha…</option>
+                  {BOOK_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div className="field">
-            <label className="label" htmlFor="language">Idioma</label>
-            <select
-              id="language"
-              className="input"
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-            >
-              {BOOK_LANGUAGES.map((l) => (
-                <option key={l.value} value={l.value}>{l.label}</option>
-              ))}
-            </select>
-          </div>
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="language">Idioma</Label>
+                <select
+                  id="language"
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  className="flex h-9 w-full rounded-md border bg-secondary/50 px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  {BOOK_LANGUAGES.map((l) => (
+                    <option key={l.value} value={l.value}>{l.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="pdf">
-              Arquivo PDF (máx. {MAX_PDF_MB} MB)
-            </label>
-            <input
-              id="pdf"
-              className="input"
-              type="file"
-              accept="application/pdf"
-              onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-              required
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="pdf">Arquivo PDF (máx. {MAX_PDF_MB} MB)</Label>
+              <Input
+                id="pdf"
+                type="file"
+                accept="application/pdf"
+                onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+                required
+              />
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="cover">
-              Capa (opcional — sem ela, usamos a primeira página do PDF)
-            </label>
-            <input
-              id="cover"
-              className="input"
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="cover">
+                Capa (opcional — sem ela, usamos a primeira página do PDF)
+              </Label>
+              <Input
+                id="cover"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
 
-          {error && <p className="error">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? status : 'Compartilhar com a comunidade'}
-          </button>
-        </form>
-      </div>
+            <Button type="submit" disabled={busy} size="lg">
+              {busy ? status : 'Compartilhar com a comunidade'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

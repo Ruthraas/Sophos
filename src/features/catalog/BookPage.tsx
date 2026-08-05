@@ -1,9 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
+import { BookMarked } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { coverUrl } from '../../lib/storage'
 import { useAuth } from '../auth/AuthContext'
 import { languageLabel, type BookWithUploader } from '../../types/models'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function BookPage() {
   const { id } = useParams<{ id: string }>()
@@ -49,18 +53,26 @@ export default function BookPage() {
 
   if (book === null) {
     return (
-      <div className="container">
-        <p className="help">Carregando…</p>
+      <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 md:flex-row md:px-10">
+        <Skeleton className="aspect-2/3 w-full max-w-56" />
+        <div className="flex flex-1 flex-col gap-3">
+          <Skeleton className="h-9 w-2/3" />
+          <Skeleton className="h-5 w-1/3" />
+          <Skeleton className="h-24 w-full" />
+        </div>
       </div>
     )
   }
 
   if (book === 'not-found') {
     return (
-      <div className="container stack">
-        <h2>Livro não encontrado</h2>
-        <p className="help">
-          Ele pode ter sido removido. <Link to="/">Voltar ao catálogo</Link>
+      <div className="mx-auto max-w-5xl px-4 py-10 md:px-10">
+        <h2 className="text-2xl font-semibold">Livro não encontrado</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Ele pode ter sido removido.{' '}
+          <Link to="/" className="text-primary hover:underline">
+            Voltar ao catálogo
+          </Link>
         </p>
       </div>
     )
@@ -69,56 +81,76 @@ export default function BookPage() {
   const cover = coverUrl(book.cover_path)
 
   return (
-    <div className="container-wide">
-      <div className="book-hero-panel">
-        {cover && <img className="book-backdrop" src={cover} alt="" aria-hidden />}
-        <div className="book-hero">
-          {cover ? (
-            <img
-              className="book-cover cover-frame"
-              style={{ maxWidth: '14rem' }}
-              src={cover}
-              alt={`Capa de ${book.title}`}
-            />
-          ) : (
-            <div className="book-cover" style={{ maxWidth: '14rem' }} aria-hidden />
-          )}
+    <div className="relative overflow-hidden">
+      {cover && (
+        <>
+          <img
+            src={cover}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full scale-125 object-cover opacity-20 blur-3xl"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background" />
+        </>
+      )}
+      <div className="relative mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 md:flex-row md:px-10">
+        {cover ? (
+          <img
+            src={cover}
+            alt={`Capa de ${book.title}`}
+            className="aspect-2/3 w-full max-w-56 shrink-0 rounded-lg border-2 border-primary/40 object-cover shadow-xl"
+          />
+        ) : (
+          <div className="flex aspect-2/3 w-full max-w-56 shrink-0 items-center justify-center rounded-lg border bg-secondary">
+            <BookMarked className="size-10 text-primary/50" />
+          </div>
+        )}
 
-          <div className="stack" style={{ flex: '1 1 20rem', alignContent: 'start' }}>
-            <h1>{book.title}</h1>
-            <p className="book-author">{book.author}</p>
-          <p className="help">
-            <span className="tag">{book.category}</span>{' '}
-            <span className="tag">{languageLabel(book.language)}</span>{' '}
-            <span className="tag">{book.page_count} páginas</span>
+        <div className="flex flex-1 flex-col gap-4">
+          <h1 className="text-3xl font-semibold md:text-4xl">{book.title}</h1>
+          <p className="font-serif text-lg italic text-muted-foreground">
+            {book.author}
           </p>
-          {book.description && <p>{book.description}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Badge>{book.category}</Badge>
+            <Badge variant="secondary">{languageLabel(book.language)}</Badge>
+            <Badge variant="secondary">{book.page_count} páginas</Badge>
+          </div>
+          {book.description && (
+            <p className="max-w-2xl text-sm leading-relaxed text-foreground/90">
+              {book.description}
+            </p>
+          )}
           {book.profiles && (
-            <p className="help">
+            <p className="text-sm text-muted-foreground">
               Compartilhado por{' '}
-              <Link to={`/u/${book.profiles.username}`}>
+              <Link
+                to={`/u/${book.profiles.username}`}
+                className="text-primary hover:underline"
+              >
                 {book.profiles.display_name}
               </Link>
             </p>
           )}
-          <div>
+          <div className="pt-2">
             {session ? (
-              <Link className="btn btn-primary" to={`/ler/${book.id}`}>
-                {resumePage
-                  ? `Continuar da página ${resumePage}`
-                  : 'Começar a ler'}
-              </Link>
-            ) : (
-              <>
-                <Link className="btn btn-primary" to="/entrar">
-                  Entrar para ler
+              <Button asChild size="lg">
+                <Link to={`/ler/${book.id}`}>
+                  {resumePage
+                    ? `Continuar da página ${resumePage}`
+                    : 'Começar a ler'}
                 </Link>
-                <p className="help" style={{ marginTop: 'var(--space-2)' }}>
+              </Button>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <Button asChild size="lg">
+                  <Link to="/entrar">Entrar para ler</Link>
+                </Button>
+                <p className="text-sm text-muted-foreground">
                   A leitura é gratuita — basta ter uma conta.
                 </p>
-              </>
+              </div>
             )}
-          </div>
           </div>
         </div>
       </div>

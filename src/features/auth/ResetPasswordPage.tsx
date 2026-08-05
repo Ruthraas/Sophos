@@ -2,6 +2,10 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import { PASSWORD_MIN_LENGTH } from './auth-service'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 export default function ResetPasswordPage() {
   const [username, setUsername] = useState('')
@@ -44,84 +48,83 @@ export default function ResetPasswordPage() {
 
   if (done) {
     return (
-      <div className="container">
-        <div className="card stack">
-          <h2>Senha redefinida</h2>
-          <p>
-            O código de recuperação usado foi invalidado. Depois de entrar,
-            visite seu perfil para gerar um código novo.
-          </p>
-          <Link className="btn btn-primary" to="/entrar">
-            Ir para o login
-          </Link>
-        </div>
+      <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-16">
+        <Card>
+          <CardHeader>
+            <CardTitle>Senha redefinida</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              O código de recuperação usado foi invalidado. Depois de entrar,
+              visite seu perfil para gerar um código novo.
+            </p>
+            <Button asChild>
+              <Link to="/entrar">Ir para o login</Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="container">
-      <div className="card">
-        <form className="stack" onSubmit={handleSubmit}>
-          <h2>Recuperar senha</h2>
-          <p className="help">
-            Informe seu nome de usuário e o código de recuperação que você
-            guardou ao criar a conta (formato SOPHOS-XXXX-XXXX-XXXX-XXXX).
-          </p>
+    <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-16">
+      <Card>
+        <CardContent className="pt-6">
+          <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+            <h2 className="text-xl font-semibold">Recuperar senha</h2>
+            <p className="text-sm text-muted-foreground">
+              Informe seu nome de usuário e o código de recuperação que você
+              guardou ao criar a conta (formato SOPHOS-XXXX-XXXX-XXXX-XXXX).
+            </p>
 
-          <div className="field">
-            <label className="label" htmlFor="username">
-              Nome de usuário
-            </label>
-            <input
-              id="username"
-              className="input"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="username">Nome de usuário</Label>
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="code">
-              Código de recuperação
-            </label>
-            <input
-              id="code"
-              className="input"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="SOPHOS-…"
-              required
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="code">Código de recuperação</Label>
+              <Input
+                id="code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="SOPHOS-…"
+                required
+              />
+            </div>
 
-          <div className="field">
-            <label className="label" htmlFor="newPassword">
-              Nova senha
-            </label>
-            <input
-              id="newPassword"
-              className="input"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              autoComplete="new-password"
-              required
-            />
-          </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="newPassword">Nova senha</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                autoComplete="new-password"
+                required
+              />
+            </div>
 
-          {error && <p className="error">{error}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-          <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? 'Aguarde…' : 'Redefinir senha'}
-          </button>
+            <Button type="submit" disabled={busy} size="lg">
+              {busy ? 'Aguarde…' : 'Redefinir senha'}
+            </Button>
 
-          <p className="help">
-            <Link to="/entrar">Voltar para o login</Link>
-          </p>
-        </form>
-      </div>
+            <p className="text-sm text-muted-foreground">
+              <Link to="/entrar" className="hover:underline">
+                Voltar para o login
+              </Link>
+            </p>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

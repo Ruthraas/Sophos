@@ -1,10 +1,16 @@
 import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { BookMarked } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import { signOut } from '../auth/auth-service'
 import { hasRecoveryCode, saveNewRecoveryCode } from '../auth/recovery'
 import type { Book } from '../../types/models'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -21,7 +27,6 @@ export default function ProfilePage() {
 
   const userId = session?.user.id
 
-  
   useEffect(() => {
     if (profile) {
       setDisplayName(profile.display_name)
@@ -106,119 +111,133 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container stack" style={{ gap: 'var(--space-6)' }}>
-      <div className="card stack">
-        <h2>Seu perfil</h2>
+    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-10 md:px-10">
+      <Card>
+        <CardContent className="flex flex-col gap-5 pt-6">
+          <h2 className="text-xl font-semibold">Seu perfil</h2>
 
-        <div style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
-          {profile?.avatar_url ? (
-            <img className="avatar" src={profile.avatar_url} alt="Seu avatar" />
-          ) : (
-            <div className="avatar" aria-hidden />
-          )}
-          <label className="btn" style={{ cursor: 'pointer' }}>
-            Trocar avatar
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleAvatar}
-              style={{ display: 'none' }}
-            />
-          </label>
-        </div>
-
-        <form className="stack" onSubmit={handleSave}>
-          <div className="field">
-            <label className="label" htmlFor="displayName">
-              Nome de exibição
-            </label>
-            <input
-              id="displayName"
-              className="input"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              maxLength={40}
-            />
+          <div className="flex items-center gap-4">
+            {profile?.avatar_url ? (
+              <img
+                src={profile.avatar_url}
+                alt="Seu avatar"
+                className="size-18 rounded-full border-2 border-primary/50 object-cover"
+              />
+            ) : (
+              <div className="size-18 rounded-full border-2 border-primary/50 bg-secondary" />
+            )}
+            <Label className="cursor-pointer">
+              <span className="inline-flex h-9 items-center rounded-md border px-4 text-sm hover:bg-accent">
+                Trocar avatar
+              </span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleAvatar}
+                className="hidden"
+              />
+            </Label>
           </div>
 
-          <div className="field">
-            <label className="label" htmlFor="bio">
-              Bio
-            </label>
-            <textarea
-              id="bio"
-              className="input"
-              rows={3}
-              value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              maxLength={280}
-            />
-          </div>
+          <form className="flex flex-col gap-5" onSubmit={handleSave}>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="displayName">Nome de exibição</Label>
+              <Input
+                id="displayName"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                maxLength={40}
+              />
+            </div>
 
-          {error && <p className="error">{error}</p>}
-          {saved && <p className="help">Perfil salvo.</p>}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="bio">Bio</Label>
+              <Textarea
+                id="bio"
+                rows={3}
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                maxLength={280}
+              />
+            </div>
 
-          <button className="btn btn-primary" type="submit" disabled={saving}>
-            {saving ? 'Salvando…' : 'Salvar perfil'}
-          </button>
-        </form>
-      </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            {saved && <p className="text-sm text-muted-foreground">Perfil salvo.</p>}
 
-      <div className="card stack">
-        <h3>Código de recuperação</h3>
-        {newCode ? (
-          <>
-            <p>
-              Guarde o código novo em um lugar seguro — ele não será mostrado
-              de novo e o anterior deixou de valer.
+            <Button type="submit" disabled={saving}>
+              {saving ? 'Salvando…' : 'Salvar perfil'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6">
+          <h3 className="text-lg font-semibold">Código de recuperação</h3>
+          {newCode ? (
+            <>
+              <p className="text-sm text-muted-foreground">
+                Guarde o código novo em um lugar seguro — ele não será mostrado
+                de novo e o anterior deixou de valer.
+              </p>
+              <p className="select-all rounded-md border border-dashed border-primary/50 bg-secondary/50 p-4 text-center font-mono text-lg tracking-wider">
+                {newCode}
+              </p>
+            </>
+          ) : codeActive === false ? (
+            <p className="rounded-md border-l-2 border-destructive bg-destructive/10 p-4 text-sm">
+              Você não tem código de recuperação ativo. Sem ele, se esquecer a
+              senha, a conta não poderá ser recuperada. Gere um agora.
             </p>
-            <p className="code-box">{newCode}</p>
-          </>
-        ) : codeActive === false ? (
-          <p className="notice">
-            Você não tem código de recuperação ativo. Sem ele, se esquecer a
-            senha, a conta não poderá ser recuperada. Gere um agora.
-          </p>
-        ) : (
-          <p className="help">
-            Você tem um código ativo. Se o perdeu, gere um novo — o antigo
-            deixa de valer na hora.
-          </p>
-        )}
-        <button className="btn" onClick={handleNewCode}>
-          Gerar novo código
-        </button>
-      </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Você tem um código ativo. Se o perdeu, gere um novo — o antigo
+              deixa de valer na hora.
+            </p>
+          )}
+          <Button variant="outline" onClick={handleNewCode} className="self-start">
+            Gerar novo código
+          </Button>
+        </CardContent>
+      </Card>
 
       {pagesRead !== null && pagesRead > 0 && (
-        <p className="help">
+        <p className="text-sm text-muted-foreground">
           Você já leu {pagesRead} página{pagesRead === 1 ? '' : 's'} por aqui.
           Boa leitura!
         </p>
       )}
 
-      <div className="card stack">
-        <h3>Seus livros</h3>
-        {myBooks.length === 0 ? (
-          <p className="help">
-            Você ainda não compartilhou livros.{' '}
-            <Link to="/enviar">Compartilhe o primeiro</Link>.
-          </p>
-        ) : (
-          <ul className="stack" style={{ listStyle: 'none', padding: 0 }}>
-            {myBooks.map((book) => (
-              <li key={book.id}>
-                <Link to={`/livro/${book.id}`}>{book.title}</Link>
-                <span className="help"> — {book.author}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
+      <Card>
+        <CardContent className="flex flex-col gap-4 pt-6">
+          <h3 className="text-lg font-semibold">Seus livros</h3>
+          {myBooks.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Você ainda não compartilhou livros.{' '}
+              <Link to="/enviar" className="text-primary hover:underline">
+                Compartilhe o primeiro
+              </Link>
+              .
+            </p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {myBooks.map((book) => (
+                <li key={book.id} className="flex items-center gap-2 text-sm">
+                  <BookMarked className="size-4 shrink-0 text-primary/70" />
+                  <Link to={`/livro/${book.id}`} className="hover:underline">
+                    {book.title}
+                  </Link>
+                  <span className="text-muted-foreground">— {book.author}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
 
-      <button className="btn" onClick={handleSignOut}>
+      <Button variant="outline" onClick={handleSignOut} className="self-start">
         Sair da conta
-      </button>
+      </Button>
     </div>
   )
 }

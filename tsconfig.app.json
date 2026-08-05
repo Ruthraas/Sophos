@@ -6,6 +6,10 @@
     "module": "ESNext",
     "types": ["vite/client", "vite-plugin-pwa/client"],
     "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
 
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,

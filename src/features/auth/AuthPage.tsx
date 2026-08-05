@@ -8,6 +8,10 @@ import {
 } from './auth-service'
 import { saveNewRecoveryCode } from './recovery'
 import { useAuth } from './AuthContext'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
 
 type Mode = 'login' | 'signup'
 
@@ -60,110 +64,112 @@ export default function AuthPage() {
 
   if (recoveryCode) {
     return (
-      <div className="container">
-        <div className="card stack">
-          <h2>Guarde seu código de recuperação</h2>
-          <p>
-            Sua conta não usa e-mail. Se você esquecer a senha, este código é a{' '}
-            <strong>única</strong> forma de recuperá-la. Anote em um lugar
-            seguro — ele não será mostrado de novo.
-          </p>
-          <p className="code-box">{recoveryCode}</p>
-          <p className="help">
-            Perdeu a senha e o código? A conta não pode ser recuperada. Você
-            pode gerar um código novo a qualquer momento no seu perfil.
-          </p>
-          <button className="btn btn-primary" onClick={() => navigate('/')}>
-            Já guardei meu código
-          </button>
-        </div>
+      <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-16">
+        <Card>
+          <CardHeader>
+            <CardTitle>Guarde seu código de recuperação</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              Sua conta não usa e-mail. Se você esquecer a senha, este código é
+              a <strong className="text-foreground">única</strong> forma de
+              recuperá-la. Anote em um lugar seguro — ele não será mostrado de
+              novo.
+            </p>
+            <p className="select-all rounded-md border border-dashed border-primary/50 bg-secondary/50 p-4 text-center font-mono text-lg tracking-wider">
+              {recoveryCode}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Perdeu a senha e o código? A conta não pode ser recuperada. Você
+              pode gerar um código novo a qualquer momento no seu perfil.
+            </p>
+            <Button onClick={() => navigate('/')}>Já guardei meu código</Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
 
   return (
-    <div className="container">
-      <div className="card">
-        <form className="stack" onSubmit={handleSubmit}>
-          <h2>{mode === 'login' ? 'Entrar' : 'Criar conta'}</h2>
+    <div className="mx-auto flex max-w-md flex-col justify-center px-4 py-16">
+      <Card>
+        <CardContent className="pt-6">
+          <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+            <h2 className="text-xl font-semibold">
+              {mode === 'login' ? 'Entrar' : 'Criar conta'}
+            </h2>
 
-          <div className="field">
-            <label className="label" htmlFor="username">
-              Nome de usuário
-            </label>
-            <input
-              id="username"
-              className="input"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoComplete="username"
-              required
-            />
-          </div>
-
-          {mode === 'signup' && (
-            <div className="field">
-              <label className="label" htmlFor="displayName">
-                Nome de exibição (opcional)
-              </label>
-              <input
-                id="displayName"
-                className="input"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                maxLength={40}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="username">Nome de usuário</Label>
+              <Input
+                id="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                required
               />
             </div>
-          )}
 
-          <div className="field">
-            <label className="label" htmlFor="password">
-              Senha
-            </label>
-            <input
-              id="password"
-              className="input"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-              required
-            />
-          </div>
+            {mode === 'signup' && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="displayName">Nome de exibição (opcional)</Label>
+                <Input
+                  id="displayName"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  maxLength={40}
+                />
+              </div>
+            )}
 
-          {error && <p className="error">{error}</p>}
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password">Senha</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                required
+              />
+            </div>
 
-          <button className="btn btn-primary" type="submit" disabled={busy}>
-            {busy ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta'}
-          </button>
+            {error && <p className="text-sm text-destructive">{error}</p>}
 
-          {mode === 'login' ? (
-            <p className="help">
-              Não tem conta?{' '}
-              <button
-                type="button"
-                className="btn-link"
-                onClick={() => setMode('signup')}
-              >
-                Criar conta
-              </button>
-              {' · '}
-              <Link to="/recuperar">Esqueci a senha</Link>
-            </p>
-          ) : (
-            <p className="help">
-              Já tem conta?{' '}
-              <button
-                type="button"
-                className="btn-link"
-                onClick={() => setMode('login')}
-              >
-                Entrar
-              </button>
-            </p>
-          )}
-        </form>
-      </div>
+            <Button type="submit" disabled={busy} size="lg">
+              {busy ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta'}
+            </Button>
+
+            {mode === 'login' ? (
+              <p className="text-sm text-muted-foreground">
+                Não tem conta?{' '}
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => setMode('signup')}
+                >
+                  Criar conta
+                </button>
+                {' · '}
+                <Link to="/recuperar" className="hover:underline">
+                  Esqueci a senha
+                </Link>
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Já tem conta?{' '}
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => setMode('login')}
+                >
+                  Entrar
+                </button>
+              </p>
+            )}
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
+import { Search, LibraryBig } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
+import { coverUrl } from '../../lib/storage'
 import { BOOK_CATEGORIES, type BookWithUploader } from '../../types/models'
 import BookCard from './BookCard'
 import ContinueReading from './ContinueReading'
+import BookRow from '@/components/BookRow'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 
 export default function CatalogPage() {
   const [books, setBooks] = useState<BookWithUploader[] | null>(null)
@@ -37,6 +44,8 @@ export default function CatalogPage() {
     }
   }, [])
 
+  const featured = books && books.length > 0 ? books[0] : null
+
   const filtered = useMemo(() => {
     if (!books) return []
     const term = search.trim().toLowerCase()
@@ -50,44 +59,91 @@ export default function CatalogPage() {
     })
   }, [books, category, search])
 
+  const isFiltering = search.trim() !== '' || category !== ''
+
+  const rows = useMemo(() => {
+    if (!books) return []
+    return BOOK_CATEGORIES.map((c) => ({
+      category: c,
+      items: books.filter((b) => b.category === c),
+    })).filter((row) => row.items.length > 0)
+  }, [books])
+
+  const featuredCover = featured ? coverUrl(featured.cover_path) : null
+
   return (
-    <div className="container-wide stack" style={{ gap: 'var(--space-12)' }}>
-      <section className="hero">
-        <p className="hero-kicker">ΒΙΒΛΙΟΘΗΚΗ</p>
-        <h1 className="hero-title text-gold">Fórum de Sophos</h1>
-        <p className="hero-sub">
-          Livros compartilhados pela comunidade, para ler direto no navegador.
-        </p>
-        <div className="ornament" aria-hidden>
-          ◆
+    <div className="flex flex-col gap-10 pb-16">
+      {/* Hero */}
+      <section className="relative flex min-h-[22rem] items-end overflow-hidden md:min-h-[26rem]">
+        {featuredCover && (
+          <img
+            src={featuredCover}
+            alt=""
+            aria-hidden
+            className="absolute inset-0 h-full w-full object-cover object-top opacity-40 blur-[2px]"
+          />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/10" />
+        <div className="relative flex w-full flex-col gap-4 px-4 pb-8 md:px-10 md:pb-12">
+          <p className="text-xs uppercase tracking-[0.4em] text-primary/80">
+            Fórum de Sophos
+          </p>
+          {featured ? (
+            <>
+              <h1 className="max-w-2xl text-3xl font-semibold leading-tight md:text-5xl">
+                {featured.title}
+              </h1>
+              <p className="max-w-xl text-sm text-muted-foreground md:text-base">
+                {featured.description || `por ${featured.author}`}
+              </p>
+              <div className="flex flex-wrap gap-3 pt-2">
+                <Button asChild size="lg">
+                  <Link to={`/livro/${featured.id}`}>Ver detalhes</Link>
+                </Button>
+              </div>
+            </>
+          ) : (
+            <h1 className="text-3xl font-semibold md:text-5xl">
+              Livros da comunidade
+            </h1>
+          )}
+
+          <div className="relative mt-4 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar por título ou autor…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Buscar livros"
+              className="h-11 rounded-full bg-background/80 pl-9 backdrop-blur"
+            />
+          </div>
         </div>
-        <input
-          className="input hero-search"
-          type="search"
-          placeholder="Buscar por título ou autor…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          aria-label="Buscar livros"
-        />
       </section>
 
-      <ContinueReading />
+      <div className="flex flex-col gap-10 px-4 md:px-10">
+        <ContinueReading />
 
-      <section className="stack" style={{ gap: 'var(--space-6)' }}>
-        <h2 className="section-title">Biblioteca</h2>
-
-        <div className="chip-row" role="group" aria-label="Filtrar por categoria">
+        {/* Chips de categoria */}
+        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
           <button
-            className={category === '' ? 'chip active' : 'chip'}
             onClick={() => setCategory('')}
+            className={cn(
+              'shrink-0 rounded-full border px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground',
+              category === '' && 'border-primary bg-primary text-primary-foreground hover:text-primary-foreground',
+            )}
           >
             Todas
           </button>
           {BOOK_CATEGORIES.map((c) => (
             <button
               key={c}
-              className={category === c ? 'chip active' : 'chip'}
               onClick={() => setCategory(c)}
+              className={cn(
+                'shrink-0 rounded-full border px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground',
+                category === c && 'border-primary bg-primary text-primary-foreground hover:text-primary-foreground',
+              )}
             >
               {c}
             </button>
@@ -95,35 +151,52 @@ export default function CatalogPage() {
         </div>
 
         {books === null ? (
-          <div className="shelf-grid" aria-hidden>
-            {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className="skeleton skeleton-cover" />
+          <div className="flex gap-4 overflow-hidden">
+            {Array.from({ length: 6 }, (_, i) => (
+              <Skeleton key={i} className="aspect-2/3 w-36 shrink-0 sm:w-40" />
             ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-glyph" aria-hidden>
-              🏛️
-            </div>
-            <p className="help">
-              {books.length === 0
-                ? 'A biblioteca ainda está vazia. Seja a primeira pessoa a compartilhar um livro!'
-                : 'Nenhum livro corresponde à busca.'}
+        ) : books.length === 0 ? (
+          <EmptyLibrary />
+        ) : isFiltering ? (
+          filtered.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum livro corresponde à busca.
             </p>
-            {books.length === 0 && (
-              <Link className="btn btn-primary" to="/enviar">
-                Compartilhar o primeiro livro
-              </Link>
-            )}
-          </div>
+          ) : (
+            <div className="flex flex-wrap gap-4">
+              {filtered.map((book) => (
+                <BookCard key={book.id} book={book} />
+              ))}
+            </div>
+          )
         ) : (
-          <div className="shelf-grid">
-            {filtered.map((book) => (
-              <BookCard key={book.id} book={book} />
+          <div className="flex flex-col gap-10">
+            {rows.map((row) => (
+              <BookRow key={row.category} title={row.category}>
+                {row.items.map((book) => (
+                  <BookCard key={book.id} book={book} />
+                ))}
+              </BookRow>
             ))}
           </div>
         )}
-      </section>
+      </div>
+    </div>
+  )
+}
+
+function EmptyLibrary() {
+  return (
+    <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed py-16 text-center">
+      <LibraryBig className="size-10 text-primary/60" />
+      <p className="max-w-sm text-sm text-muted-foreground">
+        A biblioteca ainda está vazia. Seja a primeira pessoa a compartilhar um
+        livro!
+      </p>
+      <Button asChild>
+        <Link to="/enviar">Compartilhar o primeiro livro</Link>
+      </Button>
     </div>
   )
 }

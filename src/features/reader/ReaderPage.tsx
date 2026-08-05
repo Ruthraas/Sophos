@@ -6,11 +6,13 @@ import {
   type MouseEvent,
 } from 'react'
 import { Link, useParams } from 'react-router'
+import { ArrowLeft, Minus, Plus } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import type { Book } from '../../types/models'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
-import './reader.css'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const UI_HIDE_DELAY = 3000
 
@@ -187,26 +189,43 @@ export default function ReaderPage() {
 
   if (error) {
     return (
-      <div className="container stack">
-        <h2>Não deu para abrir</h2>
-        <p className="help">{error}</p>
-        <Link to="/">Voltar ao catálogo</Link>
+      <div className="mx-auto flex max-w-md flex-col gap-3 px-4 py-16">
+        <h2 className="text-xl font-semibold">Não deu para abrir</h2>
+        <p className="text-sm text-muted-foreground">{error}</p>
+        <Link to="/" className="text-sm text-primary hover:underline">
+          Voltar ao catálogo
+        </Link>
       </div>
     )
   }
 
   return (
     <div
-      className={`reader${uiVisible ? '' : ' ui-hidden'}`}
+      className={cn(
+        'relative h-dvh overflow-hidden bg-[var(--reader-bg)]',
+        !uiVisible && 'cursor-none',
+      )}
       onMouseMove={() => {
         // toques geram eventos de mouse sintéticos — ignorá-los aqui
         if (Date.now() - lastTouch.current > 600) showUi()
       }}
     >
-      <div className="reader-bar">
-        <Link to={book ? `/livro/${book.id}` : '/'}>← Voltar</Link>
-        <span className="reader-title">{book?.title ?? ''}</span>
-        <span className="help">
+      <div
+        className={cn(
+          'absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-4 bg-background/85 px-4 py-3 text-sm backdrop-blur transition-all duration-300',
+          !uiVisible && 'pointer-events-none -translate-y-full opacity-0',
+        )}
+      >
+        <Link
+          to={book ? `/livro/${book.id}` : '/'}
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> Voltar
+        </Link>
+        <span className="min-w-0 flex-1 truncate text-center text-muted-foreground">
+          {book?.title ?? ''}
+        </span>
+        <span className="shrink-0 text-muted-foreground">
           {pageNum > 0 && total > 0
             ? `${pageNum} / ${total} · ${Math.round((pageNum / total) * 100)}%`
             : ''}
@@ -214,7 +233,7 @@ export default function ReaderPage() {
       </div>
 
       <div
-        className="reader-main"
+        className="flex h-full items-start justify-center overflow-auto px-4 pb-16 pt-12"
         onClick={handleZoneClick}
         onTouchStart={(e) => {
           lastTouch.current = Date.now()
@@ -234,50 +253,60 @@ export default function ReaderPage() {
         {pdf && pageNum > 0 ? (
           <canvas
             ref={canvasRef}
-            className={`reader-canvas${pageReady ? ' ready' : ''}`}
+            className={cn(
+              'rounded-sm bg-[var(--reader-page)] opacity-0 shadow-2xl transition-opacity duration-300',
+              pageReady && 'opacity-100',
+            )}
           />
         ) : (
-          <p className="help">Preparando o livro…</p>
+          <p className="text-sm text-muted-foreground">Preparando o livro…</p>
         )}
       </div>
 
-      <div className="reader-controls">
-        <button className="btn" onClick={goPrev} disabled={pageNum <= 1}>
+      <div
+        className={cn(
+          'absolute inset-x-0 bottom-0 z-10 flex flex-wrap items-center justify-center gap-3 bg-background/85 px-4 pb-6 pt-3 backdrop-blur transition-all duration-300',
+          !uiVisible && 'pointer-events-none translate-y-full opacity-0',
+        )}
+      >
+        <Button variant="outline" onClick={goPrev} disabled={pageNum <= 1}>
           ← Anterior
-        </button>
-        <button
-          className="btn"
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
           onClick={() => setZoom((z) => Math.max(0.6, +(z - 0.2).toFixed(2)))}
           aria-label="Diminuir o tamanho da página"
         >
-          −
-        </button>
-        <button
-          className="btn"
+          <Minus className="size-4" />
+        </Button>
+        <Button
+          variant="outline"
           onClick={() => setZoom(1)}
           aria-label="Tamanho padrão"
         >
           {Math.round(zoom * 100)}%
-        </button>
-        <button
-          className="btn"
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
           onClick={() => setZoom((z) => Math.min(2.4, +(z + 0.2).toFixed(2)))}
           aria-label="Aumentar o tamanho da página"
         >
-          +
-        </button>
-        <button
-          className="btn"
+          <Plus className="size-4" />
+        </Button>
+        <Button
+          variant="outline"
           onClick={goNext}
           disabled={total > 0 && pageNum >= total}
         >
           Próxima →
-        </button>
+        </Button>
       </div>
 
       {pageNum > 0 && total > 0 && (
         <div
-          className="reader-progress"
+          className="absolute bottom-0 left-0 z-20 h-0.5 bg-primary opacity-80 transition-all duration-300"
           style={{ width: `${(pageNum / total) * 100}%` }}
         />
       )}
