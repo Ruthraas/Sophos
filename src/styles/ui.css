@@ -31,12 +31,22 @@
   font-weight: 650;
   font-size: var(--text-xl);
   letter-spacing: 0.05em;
-  color: var(--color-heading);
-  transition: color var(--transition-fast);
+  /* degradê dourado no texto, como letras gravadas em ouro */
+  background: linear-gradient(
+    170deg,
+    #f6d98a 10%,
+    var(--color-accent) 45%,
+    #a87d3a 75%,
+    var(--color-accent-hover) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  transition: filter var(--transition-fast);
 }
 
 .brand:hover {
-  color: var(--color-accent);
+  filter: brightness(1.2);
 }
 
 .card {
