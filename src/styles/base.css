@@ -31,9 +31,13 @@ h1,
 h2,
 h3 {
   font-family: var(--font-heading);
-  color: var(--color-heading);
   line-height: var(--leading-heading);
   font-weight: 550;
+  /* letras gravadas em ouro */
+  background: var(--gradient-gold);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 h1 {
@@ -41,11 +45,6 @@ h1 {
   font-weight: 600;
   letter-spacing: 0.02em;
   font-size: var(--text-3xl);
-  /* letras gravadas em ouro */
-  background: var(--gradient-gold);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
 }
 h2 { font-size: var(--text-2xl); }
 h3 { font-size: var(--text-xl); }
