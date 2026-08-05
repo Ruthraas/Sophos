@@ -70,21 +70,23 @@ export default function BookPage() {
 
   return (
     <div className="container-wide">
-      <div className="book-hero">
-        {cover ? (
-          <img
-            className="book-cover"
-            style={{ maxWidth: '14rem' }}
-            src={cover}
-            alt={`Capa de ${book.title}`}
-          />
-        ) : (
-          <div className="book-cover" style={{ maxWidth: '14rem' }} aria-hidden />
-        )}
+      <div className="book-hero-panel">
+        {cover && <img className="book-backdrop" src={cover} alt="" aria-hidden />}
+        <div className="book-hero">
+          {cover ? (
+            <img
+              className="book-cover cover-frame"
+              style={{ maxWidth: '14rem' }}
+              src={cover}
+              alt={`Capa de ${book.title}`}
+            />
+          ) : (
+            <div className="book-cover" style={{ maxWidth: '14rem' }} aria-hidden />
+          )}
 
-        <div className="stack" style={{ flex: '1 1 20rem', alignContent: 'start' }}>
-          <h1>{book.title}</h1>
-          <p style={{ color: 'var(--color-text-muted)' }}>{book.author}</p>
+          <div className="stack" style={{ flex: '1 1 20rem', alignContent: 'start' }}>
+            <h1>{book.title}</h1>
+            <p className="book-author">{book.author}</p>
           <p className="help">
             <span className="tag">{book.category}</span>{' '}
             <span className="tag">{languageLabel(book.language)}</span>{' '}
@@ -116,6 +118,7 @@ export default function BookPage() {
                 </p>
               </>
             )}
+          </div>
           </div>
         </div>
       </div>

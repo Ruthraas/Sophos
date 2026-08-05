@@ -79,7 +79,7 @@ export default function PublicProfilePage() {
             : `Livros compartilhados (${books.length})`}
         </h3>
         {books.length > 0 && (
-          <div className="book-grid">
+          <div className="shelf-grid">
             {books.map((book) => (
               <BookCard key={book.id} book={book} />
             ))}

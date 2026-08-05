@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router'
 import { supabase } from '../../lib/supabase'
 import { BOOK_CATEGORIES, type BookWithUploader } from '../../types/models'
 import BookCard from './BookCard'
@@ -50,53 +51,79 @@ export default function CatalogPage() {
   }, [books, category, search])
 
   return (
-    <div className="container-wide stack" style={{ gap: 'var(--space-8)' }}>
-      <div>
-        <h1>Fórum de Sophos</h1>
-        <p style={{ color: 'var(--color-text-muted)', marginTop: 'var(--space-2)' }}>
+    <div className="container-wide stack" style={{ gap: 'var(--space-12)' }}>
+      <section className="hero">
+        <p className="hero-kicker">ΒΙΒΛΙΟΘΗΚΗ</p>
+        <h1 className="hero-title text-gold">Fórum de Sophos</h1>
+        <p className="hero-sub">
           Livros compartilhados pela comunidade, para ler direto no navegador.
         </p>
-      </div>
-
-      <ContinueReading />
-
-      <div className="filters">
+        <div className="ornament" aria-hidden>
+          ◆
+        </div>
         <input
-          className="input"
+          className="input hero-search"
           type="search"
           placeholder="Buscar por título ou autor…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           aria-label="Buscar livros"
         />
-        <select
-          className="input"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          aria-label="Filtrar por categoria"
-        >
-          <option value="">Todas as categorias</option>
-          {BOOK_CATEGORIES.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-      </div>
+      </section>
 
-      {books === null ? (
-        <p className="help">Carregando…</p>
-      ) : filtered.length === 0 ? (
-        <p className="help">
-          {books.length === 0
-            ? 'Ainda não há livros por aqui. Seja a primeira pessoa a compartilhar um!'
-            : 'Nenhum livro corresponde à busca.'}
-        </p>
-      ) : (
-        <div className="book-grid">
-          {filtered.map((book) => (
-            <BookCard key={book.id} book={book} />
+      <ContinueReading />
+
+      <section className="stack" style={{ gap: 'var(--space-6)' }}>
+        <h2 className="section-title">Biblioteca</h2>
+
+        <div className="chip-row" role="group" aria-label="Filtrar por categoria">
+          <button
+            className={category === '' ? 'chip active' : 'chip'}
+            onClick={() => setCategory('')}
+          >
+            Todas
+          </button>
+          {BOOK_CATEGORIES.map((c) => (
+            <button
+              key={c}
+              className={category === c ? 'chip active' : 'chip'}
+              onClick={() => setCategory(c)}
+            >
+              {c}
+            </button>
           ))}
         </div>
-      )}
+
+        {books === null ? (
+          <div className="shelf-grid" aria-hidden>
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className="skeleton skeleton-cover" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="empty-state">
+            <div className="empty-glyph" aria-hidden>
+              🏛️
+            </div>
+            <p className="help">
+              {books.length === 0
+                ? 'A biblioteca ainda está vazia. Seja a primeira pessoa a compartilhar um livro!'
+                : 'Nenhum livro corresponde à busca.'}
+            </p>
+            {books.length === 0 && (
+              <Link className="btn btn-primary" to="/enviar">
+                Compartilhar o primeiro livro
+              </Link>
+            )}
+          </div>
+        ) : (
+          <div className="shelf-grid">
+            {filtered.map((book) => (
+              <BookCard key={book.id} book={book} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   )
 }

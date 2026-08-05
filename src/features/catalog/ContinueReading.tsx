@@ -40,9 +40,9 @@ export default function ContinueReading() {
   if (valid.length === 0) return null
 
   return (
-    <section className="stack">
-      <h3>Continue lendo</h3>
-      <div className="continue-row">
+    <section className="stack" style={{ gap: 'var(--space-6)' }}>
+      <h2 className="section-title">Continue lendo</h2>
+      <div className="scroll-row">
         {valid.map((item) => {
           const book = item.books as Book
           const cover = coverUrl(book.cover_path)

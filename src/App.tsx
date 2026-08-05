@@ -13,21 +13,30 @@ import RequireAuth from './components/RequireAuth'
 function Header() {
   const { session, profile } = useAuth()
   return (
-    <header className="site-header">
-      <Link to="/" className="brand">
-        Fórum de Sophos
-      </Link>
-      <nav style={{ display: 'flex', gap: 'var(--space-4)' }}>
-        {session ? (
-          <>
-            <Link to="/enviar">Compartilhar livro</Link>
-            <Link to="/perfil">{profile?.display_name ?? 'Perfil'}</Link>
-          </>
-        ) : (
-          <Link to="/entrar">Entrar</Link>
-        )}
-      </nav>
-    </header>
+    <div className="site-top">
+      <header className="site-header">
+        <Link to="/" className="brand">
+          Fórum de Sophos
+        </Link>
+        <nav className="site-nav">
+          {session ? (
+            <>
+              <Link className="nav-link" to="/enviar">
+                Compartilhar livro
+              </Link>
+              <Link className="nav-link" to="/perfil">
+                {profile?.display_name ?? 'Perfil'}
+              </Link>
+            </>
+          ) : (
+            <Link className="nav-link" to="/entrar">
+              Entrar
+            </Link>
+          )}
+        </nav>
+      </header>
+      <div className="meander" aria-hidden />
+    </div>
   )
 }
 
@@ -36,7 +45,6 @@ function SiteLayout() {
   return (
     <>
       <Header />
-      <div className="meander" aria-hidden />
       <Outlet />
     </>
   )
