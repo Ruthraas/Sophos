@@ -123,6 +123,13 @@ export default function CatalogPage() {
       </section>
 
       <div className="flex flex-col gap-10 px-4 md:px-10">
+        <p className="mx-auto max-w-xl text-center text-sm text-muted-foreground">
+          O <span className="text-foreground">Fórum de Sophos</span> é uma
+          comunidade de leitura livre: qualquer pessoa compartilha um livro em
+          PDF e todo mundo lê direto no navegador, de graça — sem anúncios,
+          sem paywall.
+        </p>
+
         <ContinueReading />
 
         {/* Chips de categoria */}

@@ -214,7 +214,14 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
                 style={{ fontSize: `${1.1 * fontScale}rem`, lineHeight: 1.85 }}
               >
                 {paragraphs.map((p, i) =>
-                  p.heading ? (
+                  p.code ? (
+                    <pre
+                      key={i}
+                      className="overflow-x-auto whitespace-pre-wrap rounded-md border bg-secondary/40 px-4 py-3 font-mono text-[0.8em] leading-normal text-foreground"
+                    >
+                      {p.text}
+                    </pre>
+                  ) : p.heading ? (
                     <p key={i} className="text-[1.2em] font-semibold text-foreground">
                       {p.text}
                     </p>

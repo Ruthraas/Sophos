@@ -68,6 +68,9 @@ export interface ExtractedParagraph {
   text: string
   /** Provável título/subtítulo: fonte nitidamente maior que o corpo do texto. */
   heading: boolean
+  /** Provável bloco de código: usa uma fonte diferente da do corpo do texto,
+   *  em pelo menos duas linhas seguidas — preserva quebras de linha. */
+  code: boolean
 }
 
 /**
@@ -75,8 +78,9 @@ export interface ExtractedParagraph {
  * dos fragmentos: uma quebra vertical maior que a linha vira novo parágrafo;
  * uma linha terminada em hífen é emendada com a próxima (quebra de palavra).
  * Também estima quais parágrafos são títulos (fonte maior, texto curto, sem
- * pontuação de fim de frase). Heurística, não perfeita — PDFs digitalizados
- * (imagem, sem camada de texto) retornam [].
+ * pontuação de fim de frase) e quais são blocos de código (fonte diferente
+ * da predominante na página, geralmente monoespaçada). Heurística, não
+ * perfeita — PDFs digitalizados (imagem, sem camada de texto) retornam [].
  */
 export async function extractPageText(
   pdf: PDFDocumentProxy,
@@ -90,16 +94,23 @@ export async function extractPageText(
     x: number
     y: number
     height: number
+    fontName: string
   }
   const items: Item[] = []
   for (const raw of content.items) {
-    const it = raw as { str?: string; transform: number[]; height?: number }
+    const it = raw as {
+      str?: string
+      transform: number[]
+      height?: number
+      fontName?: string
+    }
     if (!it.str) continue
     items.push({
       str: it.str,
       x: it.transform[4],
       y: it.transform[5],
       height: it.height || Math.abs(it.transform[3]) || 10,
+      fontName: it.fontName ?? '',
     })
   }
   if (items.length === 0) return []
@@ -127,7 +138,24 @@ export async function extractPageText(
       .trim(),
   )
 
-  // Altura "de corpo de texto": mediana das linhas com conteúdo
+  // Fonte dominante de cada linha (a que aparece em mais caracteres nela)
+  const lineFonts = lines.map((l) => {
+    const counts = new Map<string, number>()
+    for (const it of l.items) {
+      counts.set(it.fontName, (counts.get(it.fontName) ?? 0) + it.str.length)
+    }
+    let best = ''
+    let bestCount = 0
+    for (const [font, count] of counts) {
+      if (count > bestCount) {
+        best = font
+        bestCount = count
+      }
+    }
+    return best
+  })
+
+  // Altura e fonte "de corpo de texto": as mais comuns entre linhas com conteúdo
   const bodyHeight = (() => {
     const heights = lines
       .map((l, i) => (lineTexts[i] ? l.height : null))
@@ -135,27 +163,72 @@ export async function extractPageText(
       .sort((a, b) => a - b)
     return heights.length > 0 ? heights[Math.floor(heights.length / 2)] : 10
   })()
+  const bodyFont = (() => {
+    const counts = new Map<string, number>()
+    for (let i = 0; i < lines.length; i++) {
+      if (!lineTexts[i]) continue
+      counts.set(lineFonts[i], (counts.get(lineFonts[i]) ?? 0) + 1)
+    }
+    let best = ''
+    let bestCount = 0
+    for (const [font, count] of counts) {
+      if (count > bestCount) {
+        best = font
+        bestCount = count
+      }
+    }
+    return best
+  })()
 
   // Reconstrói parágrafos a partir das linhas, guardando a maior altura de
-  // fonte de cada um (para decidir depois se é um título)
-  const paragraphs: { text: string; height: number }[] = []
+  // fonte de cada um (para decidir depois se é um título) e se a sequência
+  // inteira usa uma fonte diferente da do corpo (possível bloco de código)
+  const paragraphs: { text: string; height: number; code: boolean }[] = []
   let current = ''
   let currentHeight = 0
+  let currentIsCode = false
   let prevY: number | null = null
   let prevHeight = 0
+
+  function flush() {
+    if (current) paragraphs.push({ text: current.trim(), height: currentHeight, code: currentIsCode })
+    current = ''
+    currentHeight = 0
+    currentIsCode = false
+  }
+
   for (let i = 0; i < lines.length; i++) {
     const text = lineTexts[i]
     if (!text) continue
     const y = lines[i].y
     const height = lines[i].height
+    const isOtherFont = bodyFont !== '' && lineFonts[i] !== bodyFont
     const gap = prevY === null ? 0 : prevY - y
-    const isNewParagraph = prevY !== null && gap > prevHeight * 1.5
+    // 1.8x separa parágrafos de verdade sem cortar linhas comuns: espaço
+    // entrelinhas normal já passa perto de 1.5x a altura da fonte.
+    const isNewParagraph = prevY !== null && gap > prevHeight * 1.8
+    // Código tolera uma linha em branco no meio (comum entre blocos) sem
+    // quebrar o bloco em dois.
+    const isNewCodeBlock = prevY !== null && gap > prevHeight * 3
 
-    if (current && /-$/.test(current) && /^[a-zà-öø-ÿ]/.test(text)) {
+    if (isOtherFont) {
+      // Linha de fonte diferente: só vira bloco de código se a anterior já
+      // for do mesmo tipo (2+ linhas seguidas) — evita marcar uma palavra
+      // isolada em itálico como se fosse código.
+      if (currentIsCode && !isNewCodeBlock) {
+        current += '\n' + text
+        currentHeight = Math.max(currentHeight, height)
+      } else {
+        flush()
+        current = text
+        currentHeight = height
+        currentIsCode = true
+      }
+    } else if (current && /-$/.test(current) && /^[a-zà-öø-ÿ]/.test(text) && !currentIsCode) {
       current = current.replace(/-$/, '') + text
       currentHeight = Math.max(currentHeight, height)
-    } else if (!current || isNewParagraph) {
-      if (current) paragraphs.push({ text: current.trim(), height: currentHeight })
+    } else if (!current || isNewParagraph || currentIsCode) {
+      flush()
       current = text
       currentHeight = height
     } else {
@@ -165,17 +238,24 @@ export async function extractPageText(
     prevY = y
     prevHeight = height
   }
-  if (current) paragraphs.push({ text: current.trim(), height: currentHeight })
+  flush()
 
+  // Um bloco de código com uma única linha é heurística fraca demais
+  // (podia ser só uma palavra em itálico) — devolve como texto normal.
   return paragraphs
     .filter((p) => p.text.length > 0)
-    .map((p) => ({
-      text: p.text,
-      heading:
-        p.height > bodyHeight * 1.15 &&
-        p.text.length < 100 &&
-        !/[.,;:]$/.test(p.text),
-    }))
+    .map((p) => {
+      const code = p.code && p.text.includes('\n')
+      return {
+        text: p.text,
+        code,
+        heading:
+          !code &&
+          p.height > bodyHeight * 1.15 &&
+          p.text.length < 100 &&
+          !/[.,;:]$/.test(p.text),
+      }
+    })
 }
 
 /** Renderiza a primeira página como JPEG — usada como capa padrão do livro. */
