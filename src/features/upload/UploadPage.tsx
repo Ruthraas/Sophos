@@ -36,17 +36,21 @@ export default function UploadPage() {
   const [error, setError] = useState<string | null>(null)
   const [descLoading, setDescLoading] = useState(false)
   const [descAuto, setDescAuto] = useState(false)
+  const [descNotFound, setDescNotFound] = useState(false)
   const [duplicate, setDuplicate] = useState<DuplicateBook | null>(null)
   const [checkingDuplicate, setCheckingDuplicate] = useState(false)
 
   async function handleFetchDescription() {
     if (!title.trim() || !author.trim()) return
     setDescLoading(true)
+    setDescNotFound(false)
     try {
       const found = await fetchBookDescription(title.trim(), author.trim())
       if (found) {
         setDescription(found)
         setDescAuto(true)
+      } else {
+        setDescNotFound(true)
       }
     } finally {
       setDescLoading(false)
@@ -163,6 +167,7 @@ export default function UploadPage() {
                 onChange={(e) => {
                   setTitle(e.target.value)
                   setDuplicate(null)
+                  setDescNotFound(false)
                 }}
                 onBlur={handleCheckDuplicate}
                 maxLength={120}
@@ -178,6 +183,7 @@ export default function UploadPage() {
                 onChange={(e) => {
                   setAuthor(e.target.value)
                   setDuplicate(null)
+                  setDescNotFound(false)
                 }}
                 onBlur={() => {
                   if (!description.trim()) void handleFetchDescription()
@@ -248,6 +254,12 @@ export default function UploadPage() {
                 <p className="text-xs text-muted-foreground">
                   Sinopse encontrada automaticamente — sinta-se à vontade para
                   editar.
+                </p>
+              )}
+              {descNotFound && (
+                <p className="text-xs text-muted-foreground">
+                  Não encontramos uma sinopse automática pra esse título e
+                  autor — escreva a sua aqui embaixo.
                 </p>
               )}
             </div>
