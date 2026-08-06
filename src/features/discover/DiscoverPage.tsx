@@ -1,9 +1,16 @@
 import { useState, type FormEvent } from 'react'
-import { ExternalLink, Search } from 'lucide-react'
+import { Link, useNavigate } from 'react-router'
+import { Check, Download, ExternalLink, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  createDuplicateChecker,
+  reorderAuthorName,
+  type DuplicateBook,
+  type SharePrefill,
+} from '@/lib/bookLookup'
 
 interface GutendexAuthor {
   name: string
@@ -20,8 +27,10 @@ interface GutendexBook {
 }
 
 export default function DiscoverPage() {
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GutendexBook[] | null>(null)
+  const [duplicates, setDuplicates] = useState<Map<number, DuplicateBook>>(new Map())
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -31,11 +40,26 @@ export default function DiscoverPage() {
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({ search: query.trim() })
-      const res = await fetch(`https://gutendex.com/books/?${params}`)
+      const params = new URLSearchParams({ search: query.trim(), languages: 'pt' })
+      const [res, checkDuplicate] = await Promise.all([
+        fetch(`https://gutendex.com/books/?${params}`),
+        createDuplicateChecker(),
+      ])
       if (!res.ok) throw new Error()
       const data = await res.json()
-      setResults(data.results ?? [])
+      const books: GutendexBook[] = data.results ?? []
+
+      const dupMap = new Map<number, DuplicateBook>()
+      for (const book of books) {
+        const rawAuthor = book.authors[0]?.name ?? ''
+        const match =
+          checkDuplicate(book.title, rawAuthor) ??
+          checkDuplicate(book.title, reorderAuthorName(rawAuthor))
+        if (match) dupMap.set(book.id, match)
+      }
+
+      setResults(books)
+      setDuplicates(dupMap)
     } catch {
       setError('Não foi possível buscar agora. Tente de novo em instantes.')
     } finally {
@@ -43,20 +67,31 @@ export default function DiscoverPage() {
     }
   }
 
+  function handleShare(book: GutendexBook) {
+    const rawAuthor = book.authors[0]?.name ?? ''
+    const prefill: SharePrefill = {
+      title: book.title.slice(0, 120),
+      author: reorderAuthorName(rawAuthor).slice(0, 80),
+      description: (book.summaries[0] ?? '').slice(0, 500),
+      language: 'pt',
+      pdfSourceUrl: book.formats['application/pdf'] ?? null,
+    }
+    navigate('/enviar', { state: prefill })
+  }
+
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-10 md:px-10">
+    <div className="mx-auto flex max-w-5xl flex-col gap-8 px-4 py-10 md:px-10">
       <div className="flex flex-col items-center gap-3 text-center">
         <p className="text-xs uppercase tracking-[0.3em] text-primary/80">
-          Domínio público
+          Domínio público, em português
         </p>
         <h1 className="text-3xl font-semibold md:text-4xl">
           Descubra clássicos gratuitos
         </h1>
         <p className="max-w-lg text-sm text-muted-foreground">
-          Busca no acervo do Project Gutenberg — mais de 70 mil livros de
-          domínio público, gratuitos pra sempre. Encontrou um clássico? Baixe
-          e compartilhe com a comunidade em{' '}
-          <span className="text-foreground">Compartilhar livro</span>.
+          Busca no acervo do Project Gutenberg, filtrada pra mostrar só livros
+          em português. Encontrou um clássico? Compartilhe com a comunidade
+          sem sair daqui.
         </p>
       </div>
 
@@ -71,9 +106,9 @@ export default function DiscoverPage() {
       </form>
 
       {loading && (
-        <div className="flex flex-col gap-4">
-          {Array.from({ length: 3 }, (_, i) => (
-            <Skeleton key={i} className="h-24 w-full" />
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 4 }, (_, i) => (
+            <Skeleton key={i} className="h-40 w-full" />
           ))}
         </div>
       )}
@@ -82,47 +117,74 @@ export default function DiscoverPage() {
 
       {!loading && results !== null && results.length === 0 && (
         <p className="text-center text-sm text-muted-foreground">
-          Nada encontrado. Tente outro título ou autor.
+          Nada encontrado em português. Tente outro título ou autor.
         </p>
       )}
 
-      <div className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-2">
         {results?.map((book) => {
           const cover = book.formats['image/jpeg']
-          const readUrl =
-            book.formats['text/html'] ?? `https://www.gutenberg.org/ebooks/${book.id}`
+          const detailUrl = `https://www.gutenberg.org/ebooks/${book.id}`
+          const author = reorderAuthorName(book.authors[0]?.name ?? '') || 'Autor desconhecido'
+          const duplicate = duplicates.get(book.id)
+
           return (
-            <div key={book.id} className="flex gap-4 rounded-lg border bg-card p-4">
-              {cover ? (
-                <img
-                  src={cover}
-                  alt=""
-                  className="h-28 w-20 shrink-0 rounded object-cover"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="h-28 w-20 shrink-0 rounded bg-secondary" />
-              )}
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-                <h3 className="font-semibold leading-tight">{book.title}</h3>
-                <p className="text-sm text-muted-foreground">
-                  {book.authors.map((a) => a.name).join(', ') || 'Autor desconhecido'}
-                </p>
-                {book.subjects[0] && (
-                  <Badge variant="secondary" className="w-fit">
-                    {book.subjects[0]}
-                  </Badge>
+            <div
+              key={book.id}
+              className="flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md"
+            >
+              <div className="flex flex-1 gap-4 p-4">
+                {cover ? (
+                  <img
+                    src={cover}
+                    alt=""
+                    className="h-28 w-20 shrink-0 rounded object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="h-28 w-20 shrink-0 rounded bg-secondary" />
                 )}
-                {book.summaries[0] && (
-                  <p className="line-clamp-2 text-xs text-muted-foreground">
-                    {book.summaries[0]}
-                  </p>
-                )}
-                <Button asChild size="sm" variant="outline" className="mt-1 w-fit gap-1.5">
-                  <a href={readUrl} target="_blank" rel="noopener noreferrer">
-                    Ler no Project Gutenberg <ExternalLink className="size-3.5" />
+                <div className="flex min-w-0 flex-1 flex-col gap-1.5">
+                  <h3 className="line-clamp-2 font-semibold leading-tight">
+                    {book.title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">{author}</p>
+                  {book.subjects[0] && (
+                    <Badge variant="secondary" className="w-fit">
+                      {book.subjects[0]}
+                    </Badge>
+                  )}
+                  {book.summaries[0] && (
+                    <p className="line-clamp-3 text-xs text-muted-foreground">
+                      {book.summaries[0]}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 border-t bg-secondary/30 px-4 py-3">
+                <Button asChild size="sm" variant="outline" className="gap-1.5">
+                  <a href={detailUrl} target="_blank" rel="noopener noreferrer">
+                    Ver mais sobre em outro site <ExternalLink className="size-3.5" />
                   </a>
                 </Button>
+
+                {duplicate ? (
+                  <Button asChild size="sm" variant="secondary" className="gap-1.5">
+                    <Link to={`/livro/${duplicate.id}`}>
+                      <Check className="size-3.5" /> Já está na comunidade
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    className="gap-1.5"
+                    onClick={() => handleShare(book)}
+                  >
+                    <Download className="size-3.5" /> Quero baixar e compartilhar na
+                    comunidade
+                  </Button>
+                )}
               </div>
             </div>
           )

@@ -23,8 +23,12 @@ pessoa (apenas o hash vai ao banco).
    `supabase/schema.sql` e depois `supabase/fase1.sql`.
 2. Em Authentication → Sign In / Providers → Email: deixe o provedor **ativado**
    e desmarque apenas **"Confirm email"**.
-3. Publique a Edge Function `reset-password` com o conteúdo de
-   `supabase/functions/reset-password/index.ts`.
+3. Publique as Edge Functions `reset-password` e `fetch-external-pdf` com o
+   conteúdo de `supabase/functions/reset-password/index.ts` e
+   `supabase/functions/fetch-external-pdf/index.ts` (essa segunda baixa, no
+   servidor, o PDF de um livro achado em **Descobrir** — sem ela o botão
+   "quero baixar e compartilhar" ainda funciona, só pede pra anexar o
+   arquivo manualmente).
 4. Copie `.env.example` para `.env` e preencha com a URL e a chave anon do
    projeto (Project Settings → API).
 5. Instale e rode:

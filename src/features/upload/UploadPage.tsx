@@ -1,12 +1,14 @@
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { Sparkles } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import {
   fetchBookDescription,
+  fetchExternalPdf,
   findDuplicateBook,
   type DuplicateBook,
+  type SharePrefill,
 } from '../../lib/bookLookup'
 import { BOOK_CATEGORIES, BOOK_LANGUAGES } from '../../types/models'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,20 +26,53 @@ const COVER_TYPES: Record<string, string> = {
 
 export default function UploadPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { session } = useAuth()
-  const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
-  const [description, setDescription] = useState('')
+  const prefill = location.state as SharePrefill | null
+  const [title, setTitle] = useState(prefill?.title ?? '')
+  const [author, setAuthor] = useState(prefill?.author ?? '')
+  const [description, setDescription] = useState(prefill?.description ?? '')
   const [category, setCategory] = useState('')
-  const [language, setLanguage] = useState('pt')
+  const [language, setLanguage] = useState(prefill?.language ?? 'pt')
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [descLoading, setDescLoading] = useState(false)
-  const [descAuto, setDescAuto] = useState(false)
+  const [descAuto, setDescAuto] = useState(Boolean(prefill?.description))
   const [duplicate, setDuplicate] = useState<DuplicateBook | null>(null)
   const [checkingDuplicate, setCheckingDuplicate] = useState(false)
+  const [pdfAutoStatus, setPdfAutoStatus] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!prefill) return
+    if (prefill.title && prefill.author) {
+      setCheckingDuplicate(true)
+      findDuplicateBook(prefill.title, prefill.author)
+        .then(setDuplicate)
+        .finally(() => setCheckingDuplicate(false))
+    }
+    if (prefill.pdfSourceUrl) {
+      setPdfAutoStatus('Baixando o PDF automaticamente da fonte…')
+      fetchExternalPdf(prefill.pdfSourceUrl)
+        .then((file) => {
+          if (file) {
+            setPdfFile(file)
+            setPdfAutoStatus('PDF baixado automaticamente — confira antes de enviar.')
+          } else {
+            setPdfAutoStatus(
+              'Não deu pra baixar o PDF automaticamente. Anexe o arquivo manualmente.',
+            )
+          }
+        })
+        .catch(() =>
+          setPdfAutoStatus(
+            'Não deu pra baixar o PDF automaticamente. Anexe o arquivo manualmente.',
+          ),
+        )
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleFetchDescription() {
     if (!title.trim() || !author.trim()) return
@@ -140,7 +175,8 @@ export default function UploadPage() {
     }
   }
 
-  const busy = status !== null
+  const pdfDownloading = pdfAutoStatus === 'Baixando o PDF automaticamente da fonte…'
+  const busy = status !== null || pdfDownloading
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 md:px-10">
@@ -290,9 +326,20 @@ export default function UploadPage() {
                 id="pdf"
                 type="file"
                 accept="application/pdf"
-                onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-                required
+                onChange={(e) => {
+                  setPdfFile(e.target.files?.[0] ?? null)
+                  setPdfAutoStatus(null)
+                }}
+                required={!pdfFile}
               />
+              {pdfAutoStatus && (
+                <p className="text-xs text-muted-foreground">{pdfAutoStatus}</p>
+              )}
+              {!pdfAutoStatus && pdfFile && (
+                <p className="text-xs text-muted-foreground">
+                  Arquivo selecionado: {pdfFile.name}
+                </p>
+              )}
             </div>
 
             <div className="flex flex-col gap-2">
@@ -310,7 +357,9 @@ export default function UploadPage() {
             {error && <p className="text-sm text-destructive">{error}</p>}
 
             <Button type="submit" disabled={busy} size="lg">
-              {busy ? status : 'Compartilhar com a comunidade'}
+              {busy
+                ? (status ?? 'Baixando PDF da fonte…')
+                : 'Compartilhar com a comunidade'}
             </Button>
           </form>
         </CardContent>

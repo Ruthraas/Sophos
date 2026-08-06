@@ -33,11 +33,20 @@ export interface DuplicateBook {
   author: string
 }
 
+/** Dados de um resultado de busca externa (ex: Descobrir) levados pra /enviar. */
+export interface SharePrefill {
+  title: string
+  author: string
+  description: string
+  language: string
+  pdfSourceUrl: string | null
+}
+
 const DIACRITICS_PATTERN = '\\u0300-\\u036f'
 const DIACRITICS_RE = new RegExp('[' + DIACRITICS_PATTERN + ']', 'g')
 
 /** Normaliza título/autor pra comparação: sem acento, minúsculo, sem pontuação. */
-function normalize(text: string): string {
+export function normalize(text: string): string {
   return text
     .normalize('NFD')
     .replace(DIACRITICS_RE, '')
@@ -69,4 +78,46 @@ export async function findDuplicateBook(
     (b) => normalize(b.title) === normTitle && normalize(b.author) === normAuthor,
   )
   return match ?? null
+}
+
+/**
+ * Carrega o catálogo uma única vez e devolve uma função de checagem local —
+ * usado para conferir uma lista de resultados de busca externa (ex: página
+ * Descobrir) sem uma consulta por item.
+ */
+export async function createDuplicateChecker(): Promise<
+  (title: string, author: string) => DuplicateBook | null
+> {
+  const { supabase } = await import('./supabase')
+  const { data } = await supabase.from('books').select('id, title, author')
+  const index = new Map<string, DuplicateBook>()
+  for (const b of data ?? []) {
+    index.set(`${normalize(b.title)}|${normalize(b.author)}`, b)
+  }
+  return (title, author) => index.get(`${normalize(title)}|${normalize(author)}`) ?? null
+}
+
+/** Gutendex devolve autores como "Sobrenome, Nome" — deixa no formato usual. */
+export function reorderAuthorName(name: string): string {
+  const [last, first] = name.split(',').map((s) => s.trim())
+  return first ? `${first} ${last}` : name
+}
+
+/**
+ * Baixa, via Edge Function (contorna a falta de CORS do gutenberg.org), um
+ * PDF público de uma fonte externa e devolve como File pronto pra anexar no
+ * formulário de envio. Retorna null se a fonte não tiver PDF de verdade ou
+ * se o download falhar — nesse caso o usuário anexa manualmente.
+ */
+export async function fetchExternalPdf(url: string): Promise<File | null> {
+  try {
+    const { supabase } = await import('./supabase')
+    const { data, error } = await supabase.functions.invoke('fetch-external-pdf', {
+      body: { url },
+    })
+    if (error || !(data instanceof Blob) || data.size === 0) return null
+    return new File([data], 'livro.pdf', { type: 'application/pdf' })
+  } catch {
+    return null
+  }
 }
