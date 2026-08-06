@@ -194,11 +194,13 @@ export default function UploadPage() {
               />
             </div>
 
-            {checkingDuplicate && (
-              <p className="text-xs text-muted-foreground">
-                Verificando se este livro já está no catálogo…
-              </p>
-            )}
+            {/* Sempre montado (mesmo vazio) — evita que o texto aparecer/sumir
+                desloque o botão de enviar bem no instante de um clique. */}
+            <p className="min-h-[1rem] text-xs text-muted-foreground">
+              {checkingDuplicate
+                ? 'Verificando se este livro já está no catálogo…'
+                : ' '}
+            </p>
             {duplicate && (
               <div className="flex flex-col gap-1 rounded-md border-l-2 border-primary bg-primary/10 p-3 text-sm">
                 <p>
@@ -250,18 +252,14 @@ export default function UploadPage() {
                 maxLength={500}
                 placeholder="Preencha título e autor para buscar a sinopse automaticamente, ou escreva a sua."
               />
-              {descAuto && (
-                <p className="text-xs text-muted-foreground">
-                  Sinopse encontrada automaticamente — sinta-se à vontade para
-                  editar.
-                </p>
-              )}
-              {descNotFound && (
-                <p className="text-xs text-muted-foreground">
-                  Não encontramos uma sinopse automática pra esse título e
-                  autor — escreva a sua aqui embaixo.
-                </p>
-              )}
+              {/* Sempre montado — mesma razão do aviso de duplicata acima. */}
+              <p className="min-h-[1rem] text-xs text-muted-foreground">
+                {descAuto
+                  ? 'Sinopse encontrada automaticamente — sinta-se à vontade para editar.'
+                  : descNotFound
+                    ? 'Não encontramos uma sinopse automática pra esse título e autor — escreva a sua aqui embaixo.'
+                    : ' '}
+              </p>
             </div>
 
             <div className="grid gap-5 sm:grid-cols-2">
