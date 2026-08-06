@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import LikeButton from './LikeButton'
+import SaveButton from './SaveButton'
 import CommentSection from './CommentSection'
 
 export default function BookPage() {
@@ -155,7 +156,10 @@ export default function BookPage() {
               </p>
             </>
           )}
-          <LikeButton bookId={book.id} />
+          <div className="flex items-center gap-2">
+            <LikeButton bookId={book.id} />
+            <SaveButton bookId={book.id} />
+          </div>
         </div>
       </div>
 

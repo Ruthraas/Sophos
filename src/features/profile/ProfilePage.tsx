@@ -287,7 +287,7 @@ export default function ProfilePage() {
 
       <Card>
         <CardContent className="flex flex-col gap-4 pt-6">
-          <h3 className="text-lg font-semibold">Seus livros</h3>
+          <h3 className="text-lg font-semibold">Livros que você compartilhou</h3>
           {myBooks.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               Você ainda não compartilhou livros.{' '}

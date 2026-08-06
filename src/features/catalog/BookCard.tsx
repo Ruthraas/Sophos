@@ -3,6 +3,7 @@ import { BookMarked } from 'lucide-react'
 import { coverUrl } from '../../lib/storage'
 import type { BookWithUploader } from '../../types/models'
 import { Badge } from '@/components/ui/badge'
+import SaveButton from './SaveButton'
 
 export default function BookCard({ book }: { book: BookWithUploader }) {
   const cover = coverUrl(book.cover_path)
@@ -27,6 +28,7 @@ export default function BookCard({ book }: { book: BookWithUploader }) {
         <Badge className="absolute left-2 top-2 bg-background/70 text-[10px] text-primary backdrop-blur">
           {book.category}
         </Badge>
+        <SaveButton bookId={book.id} compact />
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent px-2.5 pb-2.5 pt-8 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
           <p className="line-clamp-2 text-sm font-semibold text-white">
             {book.title}

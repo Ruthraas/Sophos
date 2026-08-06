@@ -1,6 +1,6 @@
 -- =============================================================
 -- Fórum de Sophos — recursos sociais (seguir, curtir, comentar,
--- conquistas de leitura)
+-- conquistas de leitura, biblioteca pessoal)
 -- Cole no SQL Editor do Supabase e clique em Run (uma única vez).
 -- =============================================================
 
@@ -75,6 +75,28 @@ create policy "progresso concluído é público"
       select page_count from public.books where id = book_id
     )
   );
+
+-- ---------- Biblioteca pessoal: livros salvos pra ler depois ----------
+-- Privado — só a própria pessoa vê o que guardou (não é uma curtida pública).
+create table public.saved_books (
+  user_id uuid not null references auth.users (id) on delete cascade,
+  book_id uuid not null references public.books (id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (user_id, book_id)
+);
+alter table public.saved_books enable row level security;
+
+create policy "ver os próprios livros salvos"
+  on public.saved_books for select to authenticated
+  using (auth.uid() = user_id);
+create policy "salvar um livro"
+  on public.saved_books for insert to authenticated
+  with check (auth.uid() = user_id);
+create policy "remover um livro salvo"
+  on public.saved_books for delete to authenticated
+  using (auth.uid() = user_id);
+
+alter publication supabase_realtime add table public.saved_books;
 
 -- ---------- Tempo real ----------
 alter publication supabase_realtime add table public.book_comments;
