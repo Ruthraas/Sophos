@@ -6,7 +6,15 @@ import {
   type MouseEvent,
 } from 'react'
 import { Link, useParams } from 'react-router'
-import { AlignLeft, ArrowLeft, FileText, Minus, Plus } from 'lucide-react'
+import {
+  AlignLeft,
+  ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Minus,
+  Plus,
+} from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import type { Book } from '../../types/models'
@@ -366,8 +374,14 @@ export default function ReaderPage() {
           !barsVisible && 'pointer-events-none translate-y-full opacity-0',
         )}
       >
-        <Button variant="outline" onClick={goPrev} disabled={pageNum <= 1}>
-          ← Anterior
+        <Button
+          variant="outline"
+          onClick={goPrev}
+          disabled={pageNum <= 1}
+          className="gap-1.5"
+        >
+          <ChevronLeft className="size-4" />
+          <span className="hidden sm:inline">Anterior</span>
         </Button>
         <Button
           variant="outline"
@@ -400,8 +414,10 @@ export default function ReaderPage() {
           variant="outline"
           onClick={goNext}
           disabled={total > 0 && pageNum >= total}
+          className="gap-1.5"
         >
-          Próxima →
+          <span className="hidden sm:inline">Próxima</span>
+          <ChevronRight className="size-4" />
         </Button>
       </div>
 

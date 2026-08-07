@@ -104,6 +104,21 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orderedPages.join(',')])
 
+    // No PC, o mouse só rola na vertical — converte isso em navegação
+    // horizontal (essencial pra leitura funcionar bem sem trackpad ou
+    // tela de toque). Gestos já horizontais (trackpad) passam direto.
+    useEffect(() => {
+      const container = containerRef.current
+      if (!container) return
+      function onWheel(e: WheelEvent) {
+        if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.deltaY === 0) return
+        e.preventDefault()
+        container!.scrollBy({ left: e.deltaY })
+      }
+      container.addEventListener('wheel', onWheel, { passive: false })
+      return () => container.removeEventListener('wheel', onWheel)
+    }, [])
+
     // Observa qual página está mais visível horizontalmente
     useEffect(() => {
       const container = containerRef.current
@@ -243,7 +258,7 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
               style={{ opacity: isActive ? 1 : 0.55 }}
             >
               <div
-                className="mx-auto flex min-h-full max-w-[38rem] flex-col justify-center gap-5 py-10 text-foreground/90"
+                className="mx-auto flex min-h-full max-w-[38rem] flex-col justify-center gap-5 py-10 text-foreground/90 lg:max-w-[44rem]"
                 style={{ fontSize: `${1.1 * fontScale}rem`, lineHeight: 1.85 }}
               >
                 {paragraphs.map((p, i) =>

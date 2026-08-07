@@ -3,6 +3,7 @@ import { Compass, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import QuoteCarousel from '@/components/QuoteCarousel'
 import HowItWorks from '@/components/HowItWorks'
+import CommunityStats from '@/components/CommunityStats'
 
 export default function CatalogPage() {
   return (
@@ -18,6 +19,7 @@ export default function CatalogPage() {
           Qualquer pessoa compartilha um livro em PDF e todo mundo lê direto
           no navegador, de graça — sem anúncios, sem paywall.
         </p>
+        <CommunityStats />
       </section>
 
       <QuoteCarousel />
