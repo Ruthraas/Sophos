@@ -45,7 +45,10 @@ export default function DiscoverPage() {
     }
   }, [])
 
-  const featured = books && books.length > 0 ? books[0] : null
+  // Evita destacar "Título — Volume N": prefere um livro avulso no herói.
+  const featured = books
+    ? (books.find((b) => !b.collection_name) ?? books[0] ?? null)
+    : null
 
   const filtered = useMemo(() => {
     if (!books) return []
