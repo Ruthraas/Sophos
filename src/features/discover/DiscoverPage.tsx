@@ -4,7 +4,9 @@ import { Search, LibraryBig } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { coverUrl } from '../../lib/storage'
 import { BOOK_CATEGORIES, type BookWithUploader } from '../../types/models'
+import { groupCollections } from '../../lib/collections'
 import BookCard from '../catalog/BookCard'
+import CollectionCard from '@/components/CollectionCard'
 import BookRow from '@/components/BookRow'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -162,18 +164,26 @@ export default function DiscoverPage() {
             </p>
           ) : (
             <div className="flex flex-wrap gap-4">
-              {filtered.map((book) => (
-                <BookCard key={book.id} book={book} />
-              ))}
+              {groupCollections(filtered).map((item) =>
+                item.type === 'collection' ? (
+                  <CollectionCard key={item.name} name={item.name} books={item.books} />
+                ) : (
+                  <BookCard key={item.book.id} book={item.book} />
+                ),
+              )}
             </div>
           )
         ) : (
           <div className="flex flex-col gap-10">
             {rows.map((row) => (
               <BookRow key={row.category} title={row.category}>
-                {row.items.map((book) => (
-                  <BookCard key={book.id} book={book} />
-                ))}
+                {groupCollections(row.items).map((item) =>
+                  item.type === 'collection' ? (
+                    <CollectionCard key={item.name} name={item.name} books={item.books} />
+                  ) : (
+                    <BookCard key={item.book.id} book={item.book} />
+                  ),
+                )}
               </BookRow>
             ))}
           </div>

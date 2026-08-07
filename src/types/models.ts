@@ -1,15 +1,32 @@
 export const BOOK_CATEGORIES = [
   'Ficção',
+  'Romance',
+  'Fantasia',
+  'Ficção Científica',
+  'Terror/Suspense',
+  'Policial/Thriller',
+  'Aventura',
+  'Quadrinhos/Mangá',
+  'Jovem Adulto',
   'Não-ficção',
   'Filosofia',
   'Ciência',
   'Tecnologia',
+  'Negócios/Economia',
   'Autoajuda',
+  'Psicologia',
   'História',
+  'Política',
+  'Direito',
+  'Saúde/Medicina',
   'Poesia',
   'Religião/Espiritualidade',
   'Biografia',
+  'Arte/Design',
+  'Culinária',
+  'Viagem',
   'Infantil',
+  'Educação/Didático',
   'Outros',
 ] as const
 
@@ -34,6 +51,7 @@ export interface Profile {
   display_name: string
   bio: string
   avatar_url: string | null
+  is_admin: boolean
   created_at: string
 }
 
@@ -49,6 +67,8 @@ export interface Book {
   pdf_path: string
   page_count: number
   uploaded_by: string
+  collection_name: string | null
+  collection_position: number | null
   created_at: string
 }
 

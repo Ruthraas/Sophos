@@ -7,6 +7,7 @@ import {
 } from 'react'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import type { ExtractedParagraph } from '../../lib/pdf'
+import { cn } from '@/lib/utils'
 
 export interface TextReaderHandle {
   goNext: () => void
@@ -34,6 +35,9 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
     const [loadingPrev, setLoadingPrev] = useState(false)
     const [initialSearching, setInitialSearching] = useState(true)
     const [activePage, setActivePage] = useState(startPage)
+    // No celular a rolagem natural é vertical (mais fácil com o polegar);
+    // no PC mantemos a virada horizontal estilo Kindle.
+    const [isVertical, setIsVertical] = useState(() => window.innerWidth < 768)
 
     const containerRef = useRef<HTMLDivElement | null>(null)
     const rightSentinelRef = useRef<HTMLDivElement | null>(null)
@@ -96,7 +100,11 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
       const target = orderedPages.find((p) => p >= startPage) ?? orderedPages[0]
       const el = pageRefs.current.get(target)
       if (el) {
-        el.scrollIntoView({ block: 'nearest', inline: 'start' })
+        el.scrollIntoView(
+          isVertical
+            ? { block: 'start', inline: 'nearest' }
+            : { block: 'nearest', inline: 'start' },
+        )
         setActivePage(target)
         onPageChange(target)
         scrolledInitial.current = true
@@ -104,12 +112,22 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [orderedPages.join(',')])
 
+    // Alterna o layout quando a tela muda de tamanho (ex: girar o celular).
+    useEffect(() => {
+      function onResize() {
+        setIsVertical(window.innerWidth < 768)
+      }
+      window.addEventListener('resize', onResize)
+      return () => window.removeEventListener('resize', onResize)
+    }, [])
+
     // No PC, o mouse só rola na vertical — converte isso em navegação
     // horizontal (essencial pra leitura funcionar bem sem trackpad ou
     // tela de toque). Gestos já horizontais (trackpad) passam direto.
+    // No celular a rolagem já é vertical nativamente, então não mexemos.
     useEffect(() => {
       const container = containerRef.current
-      if (!container) return
+      if (!container || isVertical) return
       function onWheel(e: WheelEvent) {
         if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || e.deltaY === 0) return
         e.preventDefault()
@@ -117,7 +135,7 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
       }
       container.addEventListener('wheel', onWheel, { passive: false })
       return () => container.removeEventListener('wheel', onWheel)
-    }, [])
+    }, [isVertical])
 
     // Observa qual página está mais visível horizontalmente
     useEffect(() => {
@@ -160,12 +178,15 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
             })
           }
         },
-        { root: container, rootMargin: '0px 800px 0px 0px' },
+        {
+          root: container,
+          rootMargin: isVertical ? '0px 0px 800px 0px' : '0px 800px 0px 0px',
+        },
       )
       observer.observe(sentinel)
       return () => observer.disconnect()
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [maxLoaded, totalPages, loadingMore])
+    }, [maxLoaded, totalPages, loadingMore, isVertical])
 
     function handleLoadPrevious() {
       if (minLoaded <= 1 || loadingPrev) return
@@ -179,11 +200,11 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
     }
 
     function scrollToPage(page: number) {
-      pageRefs.current.get(page)?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest',
-        inline: 'start',
-      })
+      pageRefs.current.get(page)?.scrollIntoView(
+        isVertical
+          ? { behavior: 'smooth', block: 'start', inline: 'nearest' }
+          : { behavior: 'smooth', block: 'nearest', inline: 'start' },
+      )
     }
 
     useImperativeHandle(ref, () => ({
@@ -212,7 +233,12 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
     return (
       <div
         ref={containerRef}
-        className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-contain scroll-smooth"
+        className={cn(
+          'flex h-full overscroll-contain scroll-smooth',
+          isVertical
+            ? 'flex-col snap-y snap-mandatory overflow-y-auto'
+            : 'snap-x snap-mandatory overflow-x-auto',
+        )}
       >
         {orderedPages.length === 0 && initialSearching && (
           <div className="flex h-full w-full shrink-0 snap-start items-center justify-center">
@@ -284,7 +310,10 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
           )
         })}
 
-        <div ref={rightSentinelRef} className="h-full w-px shrink-0" />
+        <div
+          ref={rightSentinelRef}
+          className={isVertical ? 'h-px w-full shrink-0' : 'h-full w-px shrink-0'}
+        />
         {loadingMore && (
           <div className="flex h-full w-full shrink-0 snap-start items-center justify-center">
             <p className="text-sm text-muted-foreground">

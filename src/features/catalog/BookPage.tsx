@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
-import { BookMarked } from 'lucide-react'
+import { BookMarked, Library } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 import { coverUrl } from '../../lib/storage'
 import { useAuth } from '../auth/AuthContext'
-import { languageLabel, type BookWithUploader } from '../../types/models'
+import { languageLabel, type Book, type BookWithUploader } from '../../types/models'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -17,6 +17,7 @@ export default function BookPage() {
   const { session } = useAuth()
   const [book, setBook] = useState<BookWithUploader | null | 'not-found'>(null)
   const [resumePage, setResumePage] = useState<number | null>(null)
+  const [siblings, setSiblings] = useState<Book[]>([])
 
   useEffect(() => {
     if (!id) return
@@ -53,6 +54,25 @@ export default function BookPage() {
       active = false
     }
   }, [id, session?.user.id])
+
+  useEffect(() => {
+    if (!book || book === 'not-found' || !book.collection_name) {
+      setSiblings([])
+      return
+    }
+    let active = true
+    void supabase
+      .from('books')
+      .select('*')
+      .eq('collection_name', book.collection_name)
+      .order('collection_position', { ascending: true })
+      .then(({ data }) => {
+        if (active) setSiblings(data ?? [])
+      })
+    return () => {
+      active = false
+    }
+  }, [book])
 
   if (book === null) {
     return (
@@ -162,6 +182,31 @@ export default function BookPage() {
           </div>
         </div>
       </div>
+
+      {siblings.length > 1 && (
+        <div className="relative mx-auto max-w-2xl px-4 pb-4 md:px-10">
+          <div className="flex flex-col gap-3 rounded-lg border p-4">
+            <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              <Library className="size-3.5" /> Parte da coleção "{book.collection_name}"
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {siblings.map((s) => (
+                <Link
+                  key={s.id}
+                  to={`/livro/${s.id}`}
+                  className={`rounded-full border px-3 py-1 text-xs transition-colors hover:bg-accent ${
+                    s.id === book.id
+                      ? 'border-primary bg-primary text-primary-foreground hover:bg-primary'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  Volume {s.collection_position}
+                </Link>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="relative mx-auto max-w-2xl px-4 pb-16 md:px-10">
         <CommentSection bookId={book.id} />

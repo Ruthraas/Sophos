@@ -40,6 +40,8 @@ export default function UploadPage() {
   const [language, setLanguage] = useState('pt')
   const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [isCollection, setIsCollection] = useState(false)
+  const [collectionFiles, setCollectionFiles] = useState<File[]>([])
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [descLoading, setDescLoading] = useState(false)
@@ -76,11 +78,98 @@ export default function UploadPage() {
     setDuplicate(match)
   }
 
+  async function uploadVolume(
+    uid: string,
+    file: File,
+    volumeTitle: string,
+    collection?: { name: string; position: number },
+  ): Promise<string> {
+    const { openPdf, renderFirstPageToJpeg } = await import('../../lib/pdf')
+    const { pdf, close } = await openPdf(await file.arrayBuffer())
+    const pageCount = pdf.numPages
+
+    const useCustomCover = !collection && coverFile
+    const coverBlob = useCustomCover ? coverFile! : await renderFirstPageToJpeg(pdf)
+    const coverExt = useCustomCover ? COVER_TYPES[coverFile!.type] : 'jpg'
+    const coverType = useCustomCover ? coverFile!.type : 'image/jpeg'
+    await close()
+
+    const id = crypto.randomUUID()
+    const pdfPath = `${uid}/${id}.pdf`
+    const coverPath = `${uid}/${id}.${coverExt}`
+
+    const { error: pdfError } = await supabase.storage
+      .from('books')
+      .upload(pdfPath, file, { contentType: 'application/pdf' })
+    if (pdfError) throw pdfError
+
+    const { error: coverError } = await supabase.storage
+      .from('covers')
+      .upload(coverPath, coverBlob, { contentType: coverType })
+    if (coverError) throw coverError
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('books')
+      .insert({
+        title: volumeTitle,
+        author: author.trim(),
+        description: description.trim(),
+        category,
+        language,
+        pdf_path: pdfPath,
+        cover_path: coverPath,
+        page_count: pageCount,
+        uploaded_by: uid,
+        collection_name: collection?.name ?? null,
+        collection_position: collection?.position ?? null,
+      })
+      .select('id')
+      .single()
+    if (insertError || !inserted) throw insertError
+    return inserted.id as string
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
     const uid = session?.user.id
     if (!uid) return
+
+    if (!category) {
+      setError('Escolha uma categoria.')
+      return
+    }
+
+    if (isCollection) {
+      if (collectionFiles.length < 2) {
+        setError('Escolha pelo menos 2 arquivos PDF para formar uma coleção.')
+        return
+      }
+      const tooBig = collectionFiles.find((f) => f.size > MAX_PDF_MB * 1024 * 1024)
+      if (tooBig) {
+        setError(`Cada PDF pode ter no máximo ${MAX_PDF_MB} MB.`)
+        return
+      }
+      try {
+        const collectionName = title.trim()
+        let firstId: string | null = null
+        for (let i = 0; i < collectionFiles.length; i++) {
+          setStatus(`Enviando volume ${i + 1} de ${collectionFiles.length}…`)
+          const volumeId = await uploadVolume(
+            uid,
+            collectionFiles[i],
+            `${collectionName} — Volume ${i + 1}`,
+            { name: collectionName, position: i + 1 },
+          )
+          if (i === 0) firstId = volumeId
+        }
+        navigate(firstId ? `/colecao/${encodeURIComponent(collectionName)}` : '/descobrir')
+      } catch {
+        setError('Não foi possível enviar a coleção. Tente novamente.')
+        setStatus(null)
+      }
+      return
+    }
 
     if (!pdfFile || pdfFile.type !== 'application/pdf') {
       setError('Escolha um arquivo PDF.')
@@ -94,58 +183,11 @@ export default function UploadPage() {
       setError('A capa deve ser uma imagem JPEG, PNG ou WebP.')
       return
     }
-    if (!category) {
-      setError('Escolha uma categoria.')
-      return
-    }
 
     try {
-      setStatus('Lendo o PDF…')
-      // Import dinâmico: o pdf.js (pesado) só baixa quando alguém envia um livro.
-      const { openPdf, renderFirstPageToJpeg } = await import('../../lib/pdf')
-      const { pdf, close } = await openPdf(await pdfFile.arrayBuffer())
-      const pageCount = pdf.numPages
-
-      setStatus('Preparando a capa…')
-      const coverBlob = coverFile ?? (await renderFirstPageToJpeg(pdf))
-      const coverExt = coverFile ? COVER_TYPES[coverFile.type] : 'jpg'
-      const coverType = coverFile ? coverFile.type : 'image/jpeg'
-      await close()
-
-      const id = crypto.randomUUID()
-      const pdfPath = `${uid}/${id}.pdf`
-      const coverPath = `${uid}/${id}.${coverExt}`
-
-      setStatus('Enviando o livro…')
-      const { error: pdfError } = await supabase.storage
-        .from('books')
-        .upload(pdfPath, pdfFile, { contentType: 'application/pdf' })
-      if (pdfError) throw pdfError
-
-      const { error: coverError } = await supabase.storage
-        .from('covers')
-        .upload(coverPath, coverBlob, { contentType: coverType })
-      if (coverError) throw coverError
-
-      setStatus('Salvando no catálogo…')
-      const { data: inserted, error: insertError } = await supabase
-        .from('books')
-        .insert({
-          title: title.trim(),
-          author: author.trim(),
-          description: description.trim(),
-          category,
-          language,
-          pdf_path: pdfPath,
-          cover_path: coverPath,
-          page_count: pageCount,
-          uploaded_by: uid,
-        })
-        .select('id')
-        .single()
-      if (insertError || !inserted) throw insertError
-
-      navigate(`/livro/${inserted.id}`)
+      setStatus('Lendo o PDF e enviando…')
+      const id = await uploadVolume(uid, pdfFile, title.trim())
+      navigate(`/livro/${id}`)
     } catch {
       setError('Não foi possível enviar o livro. Tente novamente.')
       setStatus(null)
@@ -314,40 +356,95 @@ export default function UploadPage() {
             <div className="flex flex-col gap-4 border-t pt-6">
               <SectionTitle>Arquivos</SectionTitle>
 
-              <div className="flex flex-col gap-2">
-                <Label>Arquivo PDF (máx. {MAX_PDF_MB} MB)</Label>
-                <Label className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3 text-sm transition-colors hover:border-primary/60 hover:bg-accent">
-                  <FileText className="size-4 shrink-0 text-primary" />
-                  <span className="truncate text-muted-foreground">
-                    {pdfFile ? pdfFile.name : 'Escolher arquivo PDF…'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="application/pdf"
-                    onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
-                    required
-                    className="hidden"
-                  />
-                </Label>
-              </div>
+              <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={isCollection}
+                  onChange={(e) => {
+                    setIsCollection(e.target.checked)
+                    setPdfFile(null)
+                    setCollectionFiles([])
+                  }}
+                  className="size-4 rounded border"
+                />
+                É uma coleção com vários volumes (vários PDFs)?
+              </label>
 
-              <div className="flex flex-col gap-2">
-                <Label>
-                  Capa (opcional — sem ela, usamos a primeira página do PDF)
-                </Label>
-                <Label className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3 text-sm transition-colors hover:border-primary/60 hover:bg-accent">
-                  <ImageIcon className="size-4 shrink-0 text-primary" />
-                  <span className="truncate text-muted-foreground">
-                    {coverFile ? coverFile.name : 'Escolher imagem de capa…'}
-                  </span>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
-                    className="hidden"
-                  />
-                </Label>
-              </div>
+              {isCollection ? (
+                <div className="flex flex-col gap-2">
+                  <Label>
+                    Arquivos PDF, um por volume (máx. {MAX_PDF_MB} MB cada)
+                  </Label>
+                  <Label className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3 text-sm transition-colors hover:border-primary/60 hover:bg-accent">
+                    <FileText className="size-4 shrink-0 text-primary" />
+                    <span className="truncate text-muted-foreground">
+                      {collectionFiles.length > 0
+                        ? `${collectionFiles.length} arquivos selecionados`
+                        : 'Escolher vários arquivos PDF…'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      multiple
+                      onChange={(e) =>
+                        setCollectionFiles(Array.from(e.target.files ?? []))
+                      }
+                      className="hidden"
+                    />
+                  </Label>
+                  {collectionFiles.length > 0 && (
+                    <ul className="flex flex-col gap-1 text-xs text-muted-foreground">
+                      {collectionFiles.map((f, i) => (
+                        <li key={i} className="truncate">
+                          Volume {i + 1}: {f.name}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Cada PDF vira um volume da coleção "{title.trim() || '…'}",
+                    na ordem escolhida. A capa de cada volume é gerada
+                    automaticamente a partir da primeira página.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <Label>Arquivo PDF (máx. {MAX_PDF_MB} MB)</Label>
+                    <Label className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3 text-sm transition-colors hover:border-primary/60 hover:bg-accent">
+                      <FileText className="size-4 shrink-0 text-primary" />
+                      <span className="truncate text-muted-foreground">
+                        {pdfFile ? pdfFile.name : 'Escolher arquivo PDF…'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={(e) => setPdfFile(e.target.files?.[0] ?? null)}
+                        required={!isCollection}
+                        className="hidden"
+                      />
+                    </Label>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <Label>
+                      Capa (opcional — sem ela, usamos a primeira página do PDF)
+                    </Label>
+                    <Label className="flex cursor-pointer items-center gap-3 rounded-md border border-dashed px-4 py-3 text-sm transition-colors hover:border-primary/60 hover:bg-accent">
+                      <ImageIcon className="size-4 shrink-0 text-primary" />
+                      <span className="truncate text-muted-foreground">
+                        {coverFile ? coverFile.name : 'Escolher imagem de capa…'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                        className="hidden"
+                      />
+                    </Label>
+                  </div>
+                </>
+              )}
             </div>
 
             {error && <p className="text-sm text-destructive">{error}</p>}

@@ -54,9 +54,13 @@ create table public.books (
   author text not null,
   description text not null default '',
   category text not null check (category in (
-    'Ficção', 'Não-ficção', 'Filosofia', 'Ciência', 'Tecnologia',
-    'Autoajuda', 'História', 'Poesia', 'Religião/Espiritualidade',
-    'Biografia', 'Infantil', 'Outros'
+    'Ficção', 'Romance', 'Fantasia', 'Ficção Científica', 'Terror/Suspense',
+    'Policial/Thriller', 'Aventura', 'Quadrinhos/Mangá', 'Jovem Adulto',
+    'Não-ficção', 'Filosofia', 'Ciência', 'Tecnologia', 'Negócios/Economia',
+    'Autoajuda', 'Psicologia', 'História', 'Política', 'Direito',
+    'Saúde/Medicina', 'Poesia', 'Religião/Espiritualidade', 'Biografia',
+    'Arte/Design', 'Culinária', 'Viagem', 'Infantil', 'Educação/Didático',
+    'Outros'
   )),
   language text not null default 'pt',
   cover_path text,
