@@ -32,6 +32,7 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
     const [maxLoaded, setMaxLoaded] = useState(startPage)
     const [loadingMore, setLoadingMore] = useState(false)
     const [loadingPrev, setLoadingPrev] = useState(false)
+    const [initialSearching, setInitialSearching] = useState(true)
     const [activePage, setActivePage] = useState(startPage)
 
     const containerRef = useRef<HTMLDivElement | null>(null)
@@ -52,17 +53,32 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
         for (const [n, paragraphs] of entries) next.set(n, paragraphs)
         return next
       })
+      return entries.some(([, paragraphs]) => paragraphs.length > 0)
     }
 
-    // Carga inicial: uma janela de páginas ao redor do ponto de retomada
+    // Carga inicial: uma janela de páginas ao redor do ponto de retomada.
+    // Se nenhuma tiver texto (comum: livro começa com várias páginas de
+    // capa/rosto/ficha catalográfica), continua carregando pra frente até
+    // achar alguma — sem isso, a tela ficava esperando o observer de
+    // scroll perceber que precisa carregar mais, um passo a mais de
+    // espera que dava a impressão de leitor travado.
     useEffect(() => {
       if (initializedFor.current === pdf) return
       initializedFor.current = pdf
-      const from = Math.max(1, startPage - WINDOW_BEFORE)
-      const to = Math.min(totalPages, startPage + WINDOW_AFTER)
-      setMinLoaded(from)
-      setMaxLoaded(to)
-      void loadRange(from, to)
+      void (async () => {
+        let from = Math.max(1, startPage - WINDOW_BEFORE)
+        let to = Math.min(totalPages, startPage + WINDOW_AFTER)
+        setMinLoaded(from)
+        setMaxLoaded(to)
+        let foundText = await loadRange(from, to)
+        while (!foundText && to < totalPages) {
+          from = to + 1
+          to = Math.min(totalPages, to + BATCH)
+          foundText = await loadRange(from, to)
+          setMaxLoaded(to)
+        }
+        setInitialSearching(false)
+      })()
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pdf])
 
@@ -183,6 +199,23 @@ const TextReader = forwardRef<TextReaderHandle, TextReaderProps>(
         ref={containerRef}
         className="flex h-full snap-x snap-mandatory overflow-x-auto overscroll-contain scroll-smooth"
       >
+        {orderedPages.length === 0 && initialSearching && (
+          <div className="flex h-full w-full shrink-0 snap-start items-center justify-center">
+            <p className="animate-pulse text-sm text-muted-foreground">
+              Preparando a leitura…
+            </p>
+          </div>
+        )}
+        {orderedPages.length === 0 && !initialSearching && (
+          <div className="flex h-full w-full shrink-0 snap-start items-center justify-center px-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Não encontramos texto nesse livro — ele deve ser um PDF
+              digitalizado (imagem). Toque em "PDF" no topo pra ler assim
+              mesmo.
+            </p>
+          </div>
+        )}
+
         {minLoaded > 1 && (
           <div className="flex h-full w-full shrink-0 snap-start items-center justify-center">
             <button
