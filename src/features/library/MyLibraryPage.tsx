@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../auth/AuthContext'
 import type { BookWithUploader } from '../../types/models'
 import BookCard from '../catalog/BookCard'
+import ContinueReading from '../catalog/ContinueReading'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -67,6 +68,12 @@ export default function MyLibraryPage() {
           pra ler quando der.
         </p>
       </div>
+
+      <ContinueReading />
+
+      <h2 className="text-sm font-semibold uppercase tracking-widest text-muted-foreground">
+        Salvos pra depois
+      </h2>
 
       {books === null ? (
         <div className="flex flex-wrap gap-4">

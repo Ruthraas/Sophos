@@ -6,19 +6,14 @@ import { useAuth } from '../auth/AuthContext'
 import { signOut } from '../auth/auth-service'
 import { hasRecoveryCode, saveNewRecoveryCode } from '../auth/recovery'
 import { fetchBookDescription } from '../../lib/bookLookup'
-import {
-  fetchCompletedBooks,
-  fetchFollowCounts,
-  type CompletedBook,
-  type FollowCounts,
-} from '../../lib/social'
+import { fetchFollowCounts, type FollowCounts } from '../../lib/social'
 import type { Book } from '../../types/models'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
-import AchievementBadges from '@/components/AchievementBadges'
+import ReadingDashboard from '@/components/ReadingDashboard'
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -31,12 +26,10 @@ export default function ProfilePage() {
   const [codeActive, setCodeActive] = useState<boolean | null>(null)
   const [newCode, setNewCode] = useState<string | null>(null)
   const [myBooks, setMyBooks] = useState<Book[]>([])
-  const [pagesRead, setPagesRead] = useState<number | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [backfilling, setBackfilling] = useState(false)
   const [backfillResult, setBackfillResult] = useState<string | null>(null)
-  const [completed, setCompleted] = useState<CompletedBook[]>([])
   const [counts, setCounts] = useState<FollowCounts>({ followers: 0, following: 0 })
 
   const userId = session?.user.id
@@ -58,16 +51,6 @@ export default function ProfilePage() {
         .eq('uploaded_by', userId)
         .order('created_at', { ascending: false })
         .then(({ data }) => setMyBooks(data ?? []))
-      void supabase
-        .from('reading_progress')
-        .select('current_page')
-        .eq('user_id', userId)
-        .then(({ data }) => {
-          if (data) {
-            setPagesRead(data.reduce((sum, r) => sum + r.current_page, 0))
-          }
-        })
-      void fetchCompletedBooks(userId).then(setCompleted)
       void fetchFollowCounts(userId).then(setCounts)
     }
   }, [userId])
@@ -214,8 +197,6 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <AchievementBadges completed={completed} />
-
           <form className="flex flex-col gap-5" onSubmit={handleSave}>
             <div className="flex flex-col gap-2">
               <Label htmlFor="displayName">Nome de exibição</Label>
@@ -249,6 +230,12 @@ export default function ProfilePage() {
       </Card>
 
       <Card>
+        <CardContent className="pt-6">
+          <ReadingDashboard userId={userId} />
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardContent className="flex flex-col gap-4 pt-6">
           <h3 className="text-lg font-semibold">Código de recuperação</h3>
           {newCode ? (
@@ -277,13 +264,6 @@ export default function ProfilePage() {
           </Button>
         </CardContent>
       </Card>
-
-      {pagesRead !== null && pagesRead > 0 && (
-        <p className="text-sm text-muted-foreground">
-          Você já leu {pagesRead} página{pagesRead === 1 ? '' : 's'} por aqui.
-          Boa leitura!
-        </p>
-      )}
 
       <Card>
         <CardContent className="flex flex-col gap-4 pt-6">

@@ -1,209 +1,41 @@
-import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router'
-import { Search, LibraryBig } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
-import { coverUrl } from '../../lib/storage'
-import { BOOK_CATEGORIES, type BookWithUploader } from '../../types/models'
-import BookCard from './BookCard'
-import ContinueReading from './ContinueReading'
-import BookRow from '@/components/BookRow'
-import { Input } from '@/components/ui/input'
+import { Compass, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Skeleton } from '@/components/ui/skeleton'
-import { cn } from '@/lib/utils'
+import QuoteCarousel from '@/components/QuoteCarousel'
+import HowItWorks from '@/components/HowItWorks'
 
 export default function CatalogPage() {
-  const [books, setBooks] = useState<BookWithUploader[] | null>(null)
-  const [category, setCategory] = useState('')
-  const [search, setSearch] = useState('')
-
-  useEffect(() => {
-    let active = true
-    async function load() {
-      const { data } = await supabase
-        .from('books')
-        .select('*, profiles(username, display_name)')
-        .order('created_at', { ascending: false })
-      if (active && data) setBooks(data)
-    }
-    void load()
-
-    // Catálogo em tempo real: qualquer mudança na tabela recarrega a lista.
-    const channel = supabase
-      .channel('books-changes')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'books' },
-        () => void load(),
-      )
-      .subscribe()
-
-    return () => {
-      active = false
-      void supabase.removeChannel(channel)
-    }
-  }, [])
-
-  const featured = books && books.length > 0 ? books[0] : null
-
-  const filtered = useMemo(() => {
-    if (!books) return []
-    const term = search.trim().toLowerCase()
-    return books.filter((b) => {
-      if (category && b.category !== category) return false
-      if (!term) return true
-      return (
-        b.title.toLowerCase().includes(term) ||
-        b.author.toLowerCase().includes(term)
-      )
-    })
-  }, [books, category, search])
-
-  const isFiltering = search.trim() !== '' || category !== ''
-
-  const rows = useMemo(() => {
-    if (!books) return []
-    return BOOK_CATEGORIES.map((c) => ({
-      category: c,
-      items: books.filter((b) => b.category === c),
-    })).filter((row) => row.items.length > 0)
-  }, [books])
-
-  const featuredCover = featured ? coverUrl(featured.cover_path) : null
-
   return (
-    <div className="flex flex-col gap-10 pb-16">
-      {/* Hero */}
-      <section className="relative flex min-h-[22rem] items-end overflow-hidden md:min-h-[26rem]">
-        {featuredCover && (
-          <img
-            src={featuredCover}
-            alt=""
-            aria-hidden
-            className="absolute inset-0 h-full w-full object-cover object-top opacity-40 blur-[2px]"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background via-background/70 to-background/10" />
-        <div className="relative flex w-full flex-col gap-4 px-4 pb-8 md:px-10 md:pb-12">
-          <p className="text-xs uppercase tracking-[0.4em] text-primary/80">
-            Fórum de Sophos
-          </p>
-          {featured ? (
-            <>
-              <h1 className="max-w-2xl text-3xl font-semibold leading-tight md:text-5xl">
-                {featured.title}
-              </h1>
-              <p className="max-w-xl text-sm text-muted-foreground md:text-base">
-                {featured.description || `por ${featured.author}`}
-              </p>
-              <div className="flex flex-wrap gap-3 pt-2">
-                <Button asChild size="lg">
-                  <Link to={`/livro/${featured.id}`}>Ver detalhes</Link>
-                </Button>
-              </div>
-            </>
-          ) : (
-            <h1 className="text-3xl font-semibold md:text-5xl">
-              Livros da comunidade
-            </h1>
-          )}
-
-          <div className="relative mt-4 max-w-md">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Buscar por título ou autor…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              aria-label="Buscar livros"
-              className="h-11 rounded-full bg-background/80 pl-9 backdrop-blur"
-            />
-          </div>
-        </div>
+    <div className="mx-auto flex max-w-3xl flex-col gap-14 px-4 py-12 md:px-10 md:py-16">
+      <section className="flex flex-col items-center gap-4 text-center">
+        <p className="text-xs uppercase tracking-[0.4em] text-primary/80">
+          Fórum de Sophos
+        </p>
+        <h1 className="text-3xl font-semibold leading-tight md:text-5xl">
+          Uma biblioteca que a comunidade constrói junto
+        </h1>
+        <p className="max-w-xl text-sm text-muted-foreground md:text-base">
+          Qualquer pessoa compartilha um livro em PDF e todo mundo lê direto
+          no navegador, de graça — sem anúncios, sem paywall.
+        </p>
       </section>
 
-      <div className="flex flex-col gap-10 px-4 md:px-10">
-        <p className="mx-auto max-w-xl text-center text-sm text-muted-foreground">
-          O <span className="text-foreground">Fórum de Sophos</span> é uma
-          comunidade de leitura livre: qualquer pessoa compartilha um livro em
-          PDF e todo mundo lê direto no navegador, de graça — sem anúncios,
-          sem paywall.
-        </p>
+      <QuoteCarousel />
 
-        <ContinueReading />
-
-        {/* Chips de categoria */}
-        <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 md:mx-0 md:flex-wrap md:px-0">
-          <button
-            onClick={() => setCategory('')}
-            className={cn(
-              'shrink-0 rounded-full border px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground',
-              category === '' && 'border-primary bg-primary text-primary-foreground hover:text-primary-foreground',
-            )}
-          >
-            Todas
-          </button>
-          {BOOK_CATEGORIES.map((c) => (
-            <button
-              key={c}
-              onClick={() => setCategory(c)}
-              className={cn(
-                'shrink-0 rounded-full border px-4 py-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground',
-                category === c && 'border-primary bg-primary text-primary-foreground hover:text-primary-foreground',
-              )}
-            >
-              {c}
-            </button>
-          ))}
-        </div>
-
-        {books === null ? (
-          <div className="flex gap-4 overflow-hidden">
-            {Array.from({ length: 6 }, (_, i) => (
-              <Skeleton key={i} className="aspect-2/3 w-36 shrink-0 sm:w-40" />
-            ))}
-          </div>
-        ) : books.length === 0 ? (
-          <EmptyLibrary />
-        ) : isFiltering ? (
-          filtered.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              Nenhum livro corresponde à busca.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-4">
-              {filtered.map((book) => (
-                <BookCard key={book.id} book={book} />
-              ))}
-            </div>
-          )
-        ) : (
-          <div className="flex flex-col gap-10">
-            {rows.map((row) => (
-              <BookRow key={row.category} title={row.category}>
-                {row.items.map((book) => (
-                  <BookCard key={book.id} book={book} />
-                ))}
-              </BookRow>
-            ))}
-          </div>
-        )}
+      <div className="flex flex-col justify-center gap-3 sm:flex-row">
+        <Button asChild size="lg" className="gap-2">
+          <Link to="/descobrir">
+            <Compass className="size-4" /> Descubra um livro pra ler
+          </Link>
+        </Button>
+        <Button asChild size="lg" variant="outline" className="gap-2">
+          <Link to="/enviar">
+            <Upload className="size-4" /> Compartilhe um livro
+          </Link>
+        </Button>
       </div>
-    </div>
-  )
-}
 
-function EmptyLibrary() {
-  return (
-    <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed py-16 text-center">
-      <LibraryBig className="size-10 text-primary/60" />
-      <p className="max-w-sm text-sm text-muted-foreground">
-        A biblioteca ainda está vazia. Seja a primeira pessoa a compartilhar um
-        livro!
-      </p>
-      <Button asChild>
-        <Link to="/enviar">Compartilhar o primeiro livro</Link>
-      </Button>
+      <HowItWorks />
     </div>
   )
 }

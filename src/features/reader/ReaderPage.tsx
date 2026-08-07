@@ -17,7 +17,13 @@ import TextReader, { type TextReaderHandle } from './TextReader'
 
 const UI_HIDE_DELAY = 3000
 const READER_MODE_KEY = 'sophos-reader-mode'
+const ZOOM_KEY = 'sophos-reader-zoom'
 type ReaderMode = 'pdf' | 'text'
+
+function loadStoredZoom(): number {
+  const stored = Number(localStorage.getItem(ZOOM_KEY))
+  return stored >= 0.6 && stored <= 2.4 ? stored : 1
+}
 
 export default function ReaderPage() {
   const { id } = useParams<{ id: string }>()
@@ -27,7 +33,7 @@ export default function ReaderPage() {
   const [book, setBook] = useState<Book | null>(null)
   const [pdf, setPdf] = useState<PDFDocumentProxy | null>(null)
   const [pageNum, setPageNum] = useState(0) // 0 = ainda carregando
-  const [zoom, setZoom] = useState(1)
+  const [zoom, setZoom] = useState(loadStoredZoom)
   const [viewWidth, setViewWidth] = useState(() => window.innerWidth)
   const [error, setError] = useState<string | null>(null)
   const [uiVisible, setUiVisible] = useState(true)
@@ -191,6 +197,11 @@ export default function ReaderPage() {
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  // Lembra o tamanho de letra/zoom preferido pra próxima sessão de leitura.
+  useEffect(() => {
+    localStorage.setItem(ZOOM_KEY, String(zoom))
+  }, [zoom])
 
   const total = pdf?.numPages ?? 0
 

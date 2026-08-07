@@ -100,4 +100,20 @@
     letter-spacing: 0.08em;
     color: var(--color-primary);
   }
+
+  /* Transição suave de conteúdo que troca (carrossel de citações) */
+  .animate-fade-in {
+    animation: fade-in 700ms ease both;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
